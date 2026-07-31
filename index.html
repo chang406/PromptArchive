@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>프롬프트 보관함</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+<div class="max-w-3xl mx-auto px-4 py-10">
+  <header class="mb-8 text-center">
+    <h1 class="text-3xl font-bold text-slate-900">📦 프롬프트 보관함</h1>
+    <p class="mt-2 text-slate-500">자주 쓰는 프롬프트를 저장하고 빠르게 복사하세요.</p>
+  </header>
+
+  <form id="prompt-form" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 space-y-4">
+    <div>
+      <label for="prompt-title" class="block text-sm font-medium text-slate-700 mb-1">제목</label>
+      <input
+        id="prompt-title"
+        type="text"
+        placeholder="예: 이메일 초안 작성"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+        required
+      >
+    </div>
+    <div>
+      <label for="prompt-content" class="block text-sm font-medium text-slate-700 mb-1">내용</label>
+      <textarea
+        id="prompt-content"
+        rows="4"
+        placeholder="프롬프트 내용을 입력하세요..."
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 resize-y"
+        required
+      ></textarea>
+    </div>
+    <div>
+      <label for="prompt-category" class="block text-sm font-medium text-slate-700 mb-1">카테고리</label>
+      <input
+        id="prompt-category"
+        type="text"
+        list="category-suggestions"
+        placeholder="예: 개발, 번역, 기획"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+      >
+      <datalist id="category-suggestions"></datalist>
+    </div>
+    <button
+      type="submit"
+      class="w-full sm:w-auto inline-flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition-colors"
+    >
+      추가하기
+    </button>
+  </form>
+
+  <div id="category-filters" class="flex flex-wrap gap-2 mb-6"></div>
+
+  <div id="empty-state" class="text-center text-slate-400 py-16 hidden">
+    <p class="text-4xl mb-2">🗒️</p>
+    <p>아직 저장된 프롬프트가 없어요.</p>
+  </div>
+
+  <div id="prompt-list" class="grid gap-4 sm:grid-cols-2"></div>
+</div>
+
+<button
+  id="eval-toggle-btn"
+  type="button"
+  class="fixed bottom-6 right-6 z-[60] inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-3 rounded-full shadow-lg transition-colors"
+  title="AI 평가 채팅 열기"
+>
+  ✨ <span>AI 평가</span>
+</button>
+
+<div
+  id="eval-modal-overlay"
+  class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden"
+>
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 w-full max-w-[560px] max-h-[80vh] flex flex-col">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
+      <h2 class="font-semibold text-slate-900">✨ AI 평가</h2>
+      <button
+        id="eval-modal-close"
+        type="button"
+        class="text-slate-400 hover:text-red-500 text-lg leading-none transition-colors"
+        title="닫기"
+      >✕</button>
+    </div>
+
+    <div id="eval-chat-messages" class="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-[240px]"></div>
+
+    <form id="eval-chat-form" class="flex items-center gap-2 px-5 py-4 border-t border-slate-200 shrink-0">
+      <input
+        id="eval-chat-input"
+        type="text"
+        placeholder="프롬프트를 평가해달라고 요청해보세요..."
+        autocomplete="off"
+        class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+      >
+      <button
+        id="eval-chat-send-btn"
+        type="submit"
+        class="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        전송
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'promptArchive.items';
+
+  const DEFAULT_CATEGORIES = ['개발', '번역', '기획'];
+
+  const form = document.getElementById('prompt-form');
+  const titleInput = document.getElementById('prompt-title');
+  const contentInput = document.getElementById('prompt-content');
+  const categoryInput = document.getElementById('prompt-category');
+  const categorySuggestions = document.getElementById('category-suggestions');
+  const filtersEl = document.getElementById('category-filters');
+  const listEl = document.getElementById('prompt-list');
+  const emptyState = document.getElementById('empty-state');
+
+  const evalToggleBtn = document.getElementById('eval-toggle-btn');
+  const evalModalOverlay = document.getElementById('eval-modal-overlay');
+  const evalModalClose = document.getElementById('eval-modal-close');
+  const evalChatMessages = document.getElementById('eval-chat-messages');
+  const evalChatForm = document.getElementById('eval-chat-form');
+  const evalChatInput = document.getElementById('eval-chat-input');
+  const evalChatSendBtn = document.getElementById('eval-chat-send-btn');
+
+  const EVALUATE_ENDPOINT = '/api/evaluate';
+  const EVALUATE_FALLBACK_MESSAGE = '지금은 평가 기능을 사용할 수 없어요. 잠시 후 다시 시도해주세요.';
+
+  function loadPrompts() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.error('저장된 데이터를 불러오지 못했습니다.', e);
+      return [];
+    }
+  }
+
+  function savePrompts(prompts) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prompts));
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  let prompts = loadPrompts();
+  let currentFilter = 'all';
+  let editingId = null;
+
+  function getCategories() {
+    const set = new Set(DEFAULT_CATEGORIES);
+    prompts.forEach((p) => {
+      if (p.category) set.add(p.category);
+    });
+    return Array.from(set);
+  }
+
+  function renderSuggestions() {
+    categorySuggestions.innerHTML = getCategories()
+      .map((c) => `<option value="${escapeHtml(c)}"></option>`)
+      .join('');
+  }
+
+  function renderFilters() {
+    const categories = getCategories();
+
+    if (currentFilter !== 'all' && !categories.includes(currentFilter)) {
+      currentFilter = 'all';
+    }
+
+    const buttons = ['all', ...categories].map((cat) => {
+      const label = cat === 'all' ? '전체' : cat;
+      const isActive = currentFilter === cat;
+      const baseClasses = 'px-3 py-1.5 rounded-full text-sm font-medium border transition-colors';
+      const activeClasses = 'bg-indigo-600 border-indigo-600 text-white';
+      const inactiveClasses = 'bg-white border-slate-300 text-slate-600 hover:bg-slate-100';
+      return `
+        <button
+          type="button"
+          data-filter="${escapeHtml(cat)}"
+          class="filter-btn ${baseClasses} ${isActive ? activeClasses : inactiveClasses}"
+        >${escapeHtml(label)}</button>
+      `;
+    });
+
+    filtersEl.innerHTML = buttons.join('');
+  }
+
+  function render() {
+    renderFilters();
+    renderSuggestions();
+
+    const visiblePrompts = prompts.filter(
+      (item) => currentFilter === 'all' || item.category === currentFilter
+    );
+
+    listEl.innerHTML = '';
+    emptyState.classList.toggle('hidden', visiblePrompts.length > 0);
+
+    visiblePrompts
+      .slice()
+      .reverse()
+      .forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'prompt-card bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col';
+
+        if (item.id === editingId) {
+          card.innerHTML = `
+            <div class="space-y-3 flex-1 flex flex-col">
+              <div>
+                <label class="block text-xs font-medium text-slate-500 mb-1">제목</label>
+                <input
+                  type="text"
+                  class="edit-title-input w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+                  value="${escapeHtml(item.title)}"
+                >
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-500 mb-1">카테고리</label>
+                <input
+                  type="text"
+                  list="category-suggestions"
+                  class="edit-category-input w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+                  value="${escapeHtml(item.category || '')}"
+                >
+              </div>
+              <div class="flex-1 flex flex-col">
+                <label class="block text-xs font-medium text-slate-500 mb-1">내용</label>
+                <textarea
+                  rows="4"
+                  class="edit-content-input w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 resize-y flex-1"
+                >${escapeHtml(item.content)}</textarea>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 mt-4">
+              <button
+                type="button"
+                data-id="${item.id}"
+                class="save-edit-btn inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+              >
+                저장하기
+              </button>
+              <button
+                type="button"
+                data-id="${item.id}"
+                class="cancel-edit-btn inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          `;
+
+          listEl.appendChild(card);
+          return;
+        }
+
+        const categoryBadge = item.category
+          ? `<span class="inline-block bg-indigo-50 text-indigo-600 text-xs font-medium px-2 py-0.5 rounded-full mb-2">${escapeHtml(item.category)}</span>`
+          : '';
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2 mb-1">
+            <h2 class="font-semibold text-slate-900 break-words">${escapeHtml(item.title)}</h2>
+            <button
+              type="button"
+              data-id="${item.id}"
+              class="delete-btn shrink-0 text-slate-400 hover:text-red-500 text-sm transition-colors"
+              title="삭제"
+            >✕</button>
+          </div>
+          ${categoryBadge}
+          <p class="text-sm text-slate-600 whitespace-pre-wrap break-words flex-1 mb-4">${escapeHtml(item.content)}</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              data-id="${item.id}"
+              class="copy-btn whitespace-nowrap inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+            >
+              복사하기
+            </button>
+            <button
+              type="button"
+              data-id="${item.id}"
+              class="edit-btn whitespace-nowrap inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+            >
+              수정하기
+            </button>
+            <span class="copied-msg whitespace-nowrap text-emerald-600 text-sm font-medium opacity-0 transition-opacity">복사됨!</span>
+          </div>
+        `;
+
+        listEl.appendChild(card);
+      });
+  }
+
+  function appendChatMessage(role, text) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'flex ' + (role === 'user' ? 'justify-end' : 'justify-start');
+
+    const bubble = document.createElement('div');
+    bubble.className = role === 'user'
+      ? 'max-w-[80%] bg-indigo-600 text-white text-sm px-3 py-2 rounded-2xl rounded-br-sm whitespace-pre-wrap break-words'
+      : 'max-w-[80%] bg-slate-100 text-slate-700 text-sm px-3 py-2 rounded-2xl rounded-bl-sm whitespace-pre-wrap break-words';
+    bubble.textContent = text;
+
+    wrapper.appendChild(bubble);
+    evalChatMessages.appendChild(wrapper);
+    evalChatMessages.scrollTop = evalChatMessages.scrollHeight;
+    return bubble;
+  }
+
+  function showTypingIndicator(bubble) {
+    bubble.innerHTML = `
+      <span class="inline-flex items-center gap-1.5 py-0.5">
+        <span class="text-slate-500">입력 중</span>
+        <span class="flex gap-0.5">
+          <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
+          <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay:150ms"></span>
+          <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay:300ms"></span>
+        </span>
+      </span>
+    `;
+  }
+
+  // "event: chunk\ndata: {...}" 형태의 SSE 이벤트 블록 하나를 파싱한다.
+  function parseSseEvent(rawBlock) {
+    let event = null;
+    let dataStr = '';
+    for (const line of rawBlock.split('\n')) {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
+    }
+    if (!event || !dataStr) return null;
+    try {
+      return { event, data: JSON.parse(dataStr) };
+    } catch {
+      return null;
+    }
+  }
+
+  function setEvalFormBusy(busy) {
+    evalChatInput.disabled = busy;
+    evalChatSendBtn.disabled = busy;
+  }
+
+  async function sendEvalMessage(text) {
+    appendChatMessage('user', text);
+    setEvalFormBusy(true);
+
+    const assistantBubble = appendChatMessage('assistant', '');
+    showTypingIndicator(assistantBubble);
+
+    let accumulated = '';
+    let gotContent = false;
+
+    try {
+      const response = await fetch(EVALUATE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: text }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('요청 실패: HTTP ' + response.status);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split('\n\n');
+        buffer = blocks.pop(); // 완성되지 않은 마지막 블록은 다음 chunk와 합치기 위해 버퍼에 남김
+
+        for (const rawBlock of blocks) {
+          const parsed = parseSseEvent(rawBlock);
+          if (!parsed) continue;
+
+          if (parsed.event === 'chunk') {
+            if (!gotContent) {
+              gotContent = true;
+              assistantBubble.textContent = '';
+            }
+            accumulated += parsed.data.text;
+            assistantBubble.textContent = accumulated;
+            evalChatMessages.scrollTop = evalChatMessages.scrollHeight;
+          } else if (parsed.event === 'error') {
+            accumulated = gotContent
+              ? accumulated + '\n\n' + parsed.data.message
+              : parsed.data.message;
+            assistantBubble.textContent = accumulated;
+            gotContent = true;
+          }
+          // 'done' 이벤트는 별도 처리 없이 스트림 종료만 기다리면 됨
+        }
+      }
+
+      if (!gotContent) {
+        assistantBubble.textContent = EVALUATE_FALLBACK_MESSAGE;
+      }
+    } catch (err) {
+      console.error('평가 요청 중 오류:', err);
+      assistantBubble.textContent = gotContent
+        ? accumulated + '\n\n' + EVALUATE_FALLBACK_MESSAGE
+        : EVALUATE_FALLBACK_MESSAGE;
+    } finally {
+      setEvalFormBusy(false);
+      evalChatInput.focus();
+    }
+  }
+
+  function openEvalModal() {
+    evalModalOverlay.classList.remove('hidden');
+    evalChatInput.focus();
+  }
+
+  function closeEvalModal() {
+    evalModalOverlay.classList.add('hidden');
+  }
+
+  function toggleEvalModal() {
+    if (evalModalOverlay.classList.contains('hidden')) {
+      openEvalModal();
+    } else {
+      closeEvalModal();
+    }
+  }
+
+  evalToggleBtn.addEventListener('click', toggleEvalModal);
+
+  evalModalClose.addEventListener('click', closeEvalModal);
+
+  evalModalOverlay.addEventListener('click', (e) => {
+    if (e.target === evalModalOverlay) closeEvalModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !evalModalOverlay.classList.contains('hidden')) {
+      closeEvalModal();
+    }
+  });
+
+  evalChatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (evalChatSendBtn.disabled) return;
+
+    const text = evalChatInput.value.trim();
+    if (!text) return;
+
+    evalChatInput.value = '';
+    sendEvalMessage(text);
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+    const category = categoryInput.value.trim();
+    if (!title || !content) return;
+
+    prompts.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      title,
+      content,
+      category,
+    });
+
+    savePrompts(prompts);
+    render();
+    form.reset();
+    titleInput.focus();
+  });
+
+  filtersEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    currentFilter = btn.dataset.filter;
+    render();
+  });
+
+  listEl.addEventListener('click', async (e) => {
+    const copyBtn = e.target.closest('.copy-btn');
+    const deleteBtn = e.target.closest('.delete-btn');
+    const editBtn = e.target.closest('.edit-btn');
+    const saveEditBtn = e.target.closest('.save-edit-btn');
+    const cancelEditBtn = e.target.closest('.cancel-edit-btn');
+
+    if (editBtn) {
+      editingId = editBtn.dataset.id;
+      render();
+      return;
+    }
+
+    if (cancelEditBtn) {
+      editingId = null;
+      render();
+      return;
+    }
+
+    if (saveEditBtn) {
+      const id = saveEditBtn.dataset.id;
+      const item = prompts.find((p) => p.id === id);
+      if (!item) return;
+
+      const card = saveEditBtn.closest('.prompt-card');
+      const title = card.querySelector('.edit-title-input').value.trim();
+      const content = card.querySelector('.edit-content-input').value.trim();
+      const category = card.querySelector('.edit-category-input').value.trim();
+      if (!title || !content) return;
+
+      item.title = title;
+      item.content = content;
+      item.category = category;
+
+      savePrompts(prompts);
+      editingId = null;
+      render();
+      return;
+    }
+
+    if (copyBtn) {
+      const id = copyBtn.dataset.id;
+      const item = prompts.find((p) => p.id === id);
+      if (!item) return;
+
+      try {
+        await navigator.clipboard.writeText(item.content);
+      } catch (err) {
+        const textarea = document.createElement('textarea');
+        textarea.value = item.content;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+
+      const msg = copyBtn.parentElement.querySelector('.copied-msg');
+      msg.classList.remove('opacity-0');
+      clearTimeout(msg._timer);
+      msg._timer = setTimeout(() => msg.classList.add('opacity-0'), 1500);
+    }
+
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.id;
+      prompts = prompts.filter((p) => p.id !== id);
+      savePrompts(prompts);
+      render();
+    }
+  });
+
+  render();
+</script>
+
+</body>
+</html>
