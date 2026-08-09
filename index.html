@@ -1,572 +1,1064 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" class="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>프롬프트 보관함</title>
+<title>프롬프트 보관함 - Prompt Archive</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          slateTheme: {
+            bg: '#0F172A',
+            card: '#1E293B',
+            cardHover: '#273549',
+            border: '#334155',
+            borderHover: '#6366F1',
+            accent: '#6366F1',
+            accentHover: '#4F46E5',
+            cyan: '#06B6D4',
+            emerald: '#10B981'
+          }
+        },
+        fontFamily: {
+          sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace']
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body {
+    background-color: #0F172A;
+    background-image: 
+      radial-gradient(circle at 10% 15%, rgba(99, 102, 241, 0.14) 0%, transparent 45%),
+      radial-gradient(circle at 90% 85%, rgba(6, 182, 212, 0.12) 0%, transparent 45%);
+    color: #F8FAFC;
+  }
+  .slate-glass-header {
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .slate-card {
+    background: #1E293B;
+    border: 1px solid #334155;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .slate-card:hover {
+    background: #273549;
+    border-color: rgba(99, 102, 241, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -6px rgba(15, 23, 42, 0.6), 0 0 15px -3px rgba(99, 102, 241, 0.25);
+  }
+  .btn-accent {
+    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+    box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.35);
+  }
+  .btn-accent:hover {
+    background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%);
+    box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.5);
+  }
+  /* Toast animation */
+  @keyframes toastFade {
+    0% { opacity: 0; transform: translateY(10px); }
+    15% { opacity: 1; transform: translateY(0); }
+    85% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
+  }
+  .toast-popup {
+    animation: toastFade 2.2s ease-in-out forwards;
+  }
+</style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800">
+<body class="min-h-screen font-sans pb-28 antialiased selection:bg-indigo-500 selection:text-white">
 
-<div class="max-w-3xl mx-auto px-4 py-10">
-  <header class="mb-8 text-center">
-    <h1 class="text-3xl font-bold text-slate-900">📦 프롬프트 보관함</h1>
-    <p class="mt-2 text-slate-500">자주 쓰는 프롬프트를 저장하고 빠르게 복사하세요.</p>
+  <!-- Header -->
+  <header class="sticky top-0 z-40 slate-glass-header px-6 py-4 mb-8">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-500/30">
+          ⚡
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+            PROMPT ARCHIVE
+            <span class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-slate-800 text-indigo-300 font-normal border border-slate-700">Vault v2.0</span>
+          </h1>
+          <p class="text-xs text-slate-400 font-mono">Personal AI Engineering & Prompt Management</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-800 text-emerald-400 border border-emerald-500/30 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          OpenRouter AI Ready
+        </span>
+      </div>
+    </div>
   </header>
 
-  <form id="prompt-form" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 space-y-4">
-    <div>
-      <label for="prompt-title" class="block text-sm font-medium text-slate-700 mb-1">제목</label>
-      <input
-        id="prompt-title"
-        type="text"
-        placeholder="예: 이메일 초안 작성"
-        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-        required
-      >
+  <main class="max-w-6xl mx-auto px-4">
+    <!-- Quick Stats Dashboard -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div class="slate-card rounded-2xl p-5 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">Total Prompts</p>
+          <p id="stat-total" class="text-3xl font-black text-white">0 <span class="text-xs font-normal text-slate-400 ml-1">보관됨</span></p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 text-xl">
+          📂
+        </div>
+      </div>
+      <div class="slate-card rounded-2xl p-5 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">Pinned Favorites</p>
+          <p id="stat-pinned" class="text-3xl font-black text-white">0 <span class="text-xs font-normal text-indigo-400 ml-1">고정됨</span></p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 text-xl">
+          ⭐
+        </div>
+      </div>
+      <div class="slate-card rounded-2xl p-5 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">Total Executions</p>
+          <p id="stat-usage" class="text-3xl font-black text-white">0 <span class="text-xs font-normal text-emerald-400 ml-1">회 복사/사용</span></p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300 text-xl">
+          🔥
+        </div>
+      </div>
     </div>
-    <div>
-      <label for="prompt-content" class="block text-sm font-medium text-slate-700 mb-1">내용</label>
-      <textarea
-        id="prompt-content"
-        rows="4"
-        placeholder="프롬프트 내용을 입력하세요..."
-        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 resize-y"
-        required
-      ></textarea>
+
+    <!-- Create / Edit Prompt Form Card -->
+    <div id="form-container" class="slate-card rounded-2xl p-6 mb-8 relative transition-all">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700">
+        <h2 id="form-title-heading" class="text-lg font-bold text-white flex items-center gap-2">
+          <span class="text-indigo-400">✨</span> 새 프롬프트 보관하기
+        </h2>
+        <span class="text-xs font-mono text-slate-400 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
+          Tip: <code class="text-indigo-300 font-bold">{{변수명}}</code>을 쓰면 템플릿으로 변환됩니다
+        </span>
+      </div>
+
+      <form id="prompt-form" class="space-y-4">
+        <input type="hidden" id="editing-id-store" value="">
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-2">
+            <label for="prompt-title" class="block text-xs font-bold text-slate-300 mb-1.5">제목</label>
+            <input
+              id="prompt-title"
+              type="text"
+              placeholder="예: Python 코딩 스타일 및 보안 리팩터링"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all"
+              required
+            >
+          </div>
+          <div>
+            <label for="prompt-category" class="block text-xs font-bold text-slate-300 mb-1.5">카테고리</label>
+            <input
+              id="prompt-category"
+              type="text"
+              list="category-suggestions"
+              placeholder="개발, 번역, 기획..."
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all"
+            >
+            <datalist id="category-suggestions"></datalist>
+          </div>
+        </div>
+
+        <div>
+          <label for="prompt-content" class="block text-xs font-bold text-slate-300 mb-1.5">프롬프트 지시문</label>
+          <textarea
+            id="prompt-content"
+            rows="4"
+            placeholder="프롬프트 내용을 입력하세요... 예: 다음 {{언어}} 코드를 {{목적}} 기준에 맞게 리팩터링해줘."
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-mono transition-all resize-y"
+            required
+          ></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-1">
+          <button
+            id="form-cancel-btn"
+            type="button"
+            class="hidden px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
+          >
+            수정 취소
+          </button>
+          <button
+            id="form-submit-btn"
+            type="submit"
+            class="btn-accent text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2"
+          >
+            <span>+</span> 프롬프트 저장하기
+          </button>
+        </div>
+      </form>
     </div>
-    <div>
-      <label for="prompt-category" class="block text-sm font-medium text-slate-700 mb-1">카테고리</label>
-      <input
-        id="prompt-category"
-        type="text"
-        list="category-suggestions"
-        placeholder="예: 개발, 번역, 기획"
-        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-      >
-      <datalist id="category-suggestions"></datalist>
+
+    <!-- Filter, Sort & Search Control Bar -->
+    <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-6">
+      <div id="category-filters" class="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+        <!-- Dynamic Filter Buttons -->
+      </div>
+
+      <div class="flex items-center gap-3 w-full lg:w-auto">
+        <select
+          id="sort-select"
+          class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-200 focus:outline-none focus:border-indigo-500 transition-all"
+        >
+          <option value="latest">⏱️ 최신순 정렬</option>
+          <option value="usage">🔥 자주 쓴 순 정렬</option>
+          <option value="name">🔤 이름순 정렬</option>
+        </select>
+
+        <div class="relative flex-1 lg:w-64">
+          <input
+            id="search-input"
+            type="text"
+            placeholder="프롬프트 검색..."
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all"
+          >
+          <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+        </div>
+      </div>
     </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="text-center text-slate-500 py-16 slate-card rounded-2xl hidden">
+      <p class="text-4xl mb-3">🗒️</p>
+      <p class="text-base font-semibold text-slate-400">보관된 프롬프트가 없습니다.</p>
+      <p class="text-xs text-slate-500 mt-1">위의 폼에서 새 프롬프트를 등록해 보세요!</p>
+    </div>
+
+    <!-- Prompt List Grid -->
+    <div id="prompt-list" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+  </main>
+
+  <!-- AI Evaluator Floating Button & Modal -->
+  <div class="fixed bottom-6 right-6 z-50">
     <button
-      type="submit"
-      class="w-full sm:w-auto inline-flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition-colors"
+      id="eval-toggle-btn"
+      type="button"
+      class="btn-accent text-white font-bold px-5 py-3.5 rounded-full shadow-2xl transition-all flex items-center gap-2.5 hover:scale-105"
+      title="AI 프롬프트 평가 대화창 열기"
     >
-      추가하기
+      <span class="text-lg">✨</span>
+      <span>AI 평가 & 샌드박스</span>
+      <span class="w-2 h-2 rounded-full bg-cyan-300 animate-ping"></span>
     </button>
-  </form>
-
-  <div id="category-filters" class="flex flex-wrap gap-2 mb-6"></div>
-
-  <div id="empty-state" class="text-center text-slate-400 py-16 hidden">
-    <p class="text-4xl mb-2">🗒️</p>
-    <p>아직 저장된 프롬프트가 없어요.</p>
   </div>
 
-  <div id="prompt-list" class="grid gap-4 sm:grid-cols-2"></div>
-</div>
+  <!-- AI Evaluator Modal Window -->
+  <div
+    id="eval-modal-overlay"
+    class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden"
+  >
+    <div class="slate-card rounded-2xl shadow-2xl border border-slate-700 w-full max-w-[620px] max-h-[85vh] flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700 bg-slate-800/50 shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 text-sm">
+            ✨
+          </div>
+          <div>
+            <h2 class="font-bold text-white text-base">AI 프롬프트 검토 샌드박스</h2>
+            <p class="text-[11px] text-slate-400 font-mono">저장하기 전 프롬프트를 다듬고 바로 보관함에 저장하세요</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            id="eval-reset-btn"
+            type="button"
+            class="text-xs font-bold text-slate-400 hover:text-indigo-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1"
+            title="대화 내역 초기화"
+          >
+            🔄 대화 초기화
+          </button>
+          <button
+            id="eval-modal-close"
+            type="button"
+            class="text-slate-400 hover:text-white text-lg p-1 transition-colors"
+            title="닫기"
+          >✕</button>
+        </div>
+      </div>
 
-<button
-  id="eval-toggle-btn"
-  type="button"
-  class="fixed bottom-6 right-6 z-[60] inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-3 rounded-full shadow-lg transition-colors"
-  title="AI 평가 채팅 열기"
->
-  ✨ <span>AI 평가</span>
-</button>
+      <div id="eval-chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 min-h-[280px] bg-slate-900/60"></div>
 
-<div
-  id="eval-modal-overlay"
-  class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden"
->
-  <div class="bg-white rounded-2xl shadow-lg border border-slate-200 w-full max-w-[560px] max-h-[80vh] flex flex-col">
-    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
-      <h2 class="font-semibold text-slate-900">✨ AI 평가</h2>
-      <button
-        id="eval-modal-close"
-        type="button"
-        class="text-slate-400 hover:text-red-500 text-lg leading-none transition-colors"
-        title="닫기"
-      >✕</button>
-    </div>
-
-    <div id="eval-chat-messages" class="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-[240px]"></div>
-
-    <form id="eval-chat-form" class="flex items-center gap-2 px-5 py-4 border-t border-slate-200 shrink-0">
-      <input
-        id="eval-chat-input"
-        type="text"
-        placeholder="프롬프트를 평가해달라고 요청해보세요..."
-        autocomplete="off"
-        class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-      >
-      <button
-        id="eval-chat-send-btn"
-        type="submit"
-        class="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        전송
-      </button>
-    </form>
-  </div>
-</div>
-
-<script>
-  const STORAGE_KEY = 'promptArchive.items';
-
-  const DEFAULT_CATEGORIES = ['개발', '번역', '기획'];
-
-  const form = document.getElementById('prompt-form');
-  const titleInput = document.getElementById('prompt-title');
-  const contentInput = document.getElementById('prompt-content');
-  const categoryInput = document.getElementById('prompt-category');
-  const categorySuggestions = document.getElementById('category-suggestions');
-  const filtersEl = document.getElementById('category-filters');
-  const listEl = document.getElementById('prompt-list');
-  const emptyState = document.getElementById('empty-state');
-
-  const evalToggleBtn = document.getElementById('eval-toggle-btn');
-  const evalModalOverlay = document.getElementById('eval-modal-overlay');
-  const evalModalClose = document.getElementById('eval-modal-close');
-  const evalChatMessages = document.getElementById('eval-chat-messages');
-  const evalChatForm = document.getElementById('eval-chat-form');
-  const evalChatInput = document.getElementById('eval-chat-input');
-  const evalChatSendBtn = document.getElementById('eval-chat-send-btn');
-
-  const EVALUATE_ENDPOINT = '/api/evaluate';
-  const EVALUATE_FALLBACK_MESSAGE = '지금은 평가 기능을 사용할 수 없어요. 잠시 후 다시 시도해주세요.';
-
-  function loadPrompts() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      console.error('저장된 데이터를 불러오지 못했습니다.', e);
-      return [];
-    }
-  }
-
-  function savePrompts(prompts) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prompts));
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  let prompts = loadPrompts();
-  let currentFilter = 'all';
-  let editingId = null;
-
-  function getCategories() {
-    const set = new Set(DEFAULT_CATEGORIES);
-    prompts.forEach((p) => {
-      if (p.category) set.add(p.category);
-    });
-    return Array.from(set);
-  }
-
-  function renderSuggestions() {
-    categorySuggestions.innerHTML = getCategories()
-      .map((c) => `<option value="${escapeHtml(c)}"></option>`)
-      .join('');
-  }
-
-  function renderFilters() {
-    const categories = getCategories();
-
-    if (currentFilter !== 'all' && !categories.includes(currentFilter)) {
-      currentFilter = 'all';
-    }
-
-    const buttons = ['all', ...categories].map((cat) => {
-      const label = cat === 'all' ? '전체' : cat;
-      const isActive = currentFilter === cat;
-      const baseClasses = 'px-3 py-1.5 rounded-full text-sm font-medium border transition-colors';
-      const activeClasses = 'bg-indigo-600 border-indigo-600 text-white';
-      const inactiveClasses = 'bg-white border-slate-300 text-slate-600 hover:bg-slate-100';
-      return `
+      <form id="eval-chat-form" class="flex items-center gap-2 px-5 py-4 border-t border-slate-700 bg-slate-800/40 shrink-0">
+        <input
+          id="eval-chat-input"
+          type="text"
+          placeholder="프롬프트를 평가받거나 다듬어달라고 요청해 보세요..."
+          autocomplete="off"
+          class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+        >
         <button
+          id="eval-chat-send-btn"
+          type="submit"
+          class="btn-accent text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+        >
+          전송
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dynamic Variable Modal Window -->
+  <div
+    id="variable-modal-overlay"
+    class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden"
+  >
+    <div class="slate-card rounded-2xl shadow-2xl border border-slate-700 w-full max-w-[540px] flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700 bg-slate-800/50">
+        <div class="flex items-center gap-2">
+          <span class="text-indigo-400 text-lg">🧩</span>
+          <h2 class="font-bold text-white text-base">템플릿 변수 입력</h2>
+        </div>
+        <button
+          id="variable-modal-close"
           type="button"
-          data-filter="${escapeHtml(cat)}"
-          class="filter-btn ${baseClasses} ${isActive ? activeClasses : inactiveClasses}"
-        >${escapeHtml(label)}</button>
-      `;
-    });
+          class="text-slate-400 hover:text-white text-lg p-1 transition-colors"
+        >✕</button>
+      </div>
 
-    filtersEl.innerHTML = buttons.join('');
-  }
+      <div class="p-6 space-y-4">
+        <div id="variable-fields-container" class="space-y-3 max-h-[30vh] overflow-y-auto pr-1"></div>
 
-  function render() {
-    renderFilters();
-    renderSuggestions();
+        <div>
+          <label class="block text-xs font-mono text-slate-400 mb-1.5 uppercase">Live Preview (완성본 미리보기)</label>
+          <div id="variable-preview-text" class="bg-slate-900 border border-slate-700 rounded-xl p-4 text-xs font-mono text-slate-200 leading-relaxed max-h-36 overflow-y-auto whitespace-pre-wrap break-words"></div>
+        </div>
 
-    const visiblePrompts = prompts.filter(
-      (item) => currentFilter === 'all' || item.category === currentFilter
-    );
+        <div class="flex justify-end pt-2">
+          <button
+            id="variable-copy-btn"
+            type="button"
+            class="btn-accent text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2"
+          >
+            📋 완성본 복사하기
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    listEl.innerHTML = '';
-    emptyState.classList.toggle('hidden', visiblePrompts.length > 0);
+  <!-- Toast Notification System -->
+  <div id="toast-container" class="fixed top-20 right-6 z-50 pointer-events-none flex flex-col gap-2"></div>
 
-    visiblePrompts
-      .slice()
-      .reverse()
-      .forEach((item) => {
-        const card = document.createElement('div');
-        card.className = 'prompt-card bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col';
+  <!-- Application Logic -->
+  <script>
+    const STORAGE_KEY = 'promptArchive.items';
+    const DEFAULT_CATEGORIES = ['개발', '번역', '기획'];
+    const EVALUATE_ENDPOINT = '/api/evaluate';
 
-        if (item.id === editingId) {
-          card.innerHTML = `
-            <div class="space-y-3 flex-1 flex flex-col">
-              <div>
-                <label class="block text-xs font-medium text-slate-500 mb-1">제목</label>
-                <input
-                  type="text"
-                  class="edit-title-input w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-                  value="${escapeHtml(item.title)}"
-                >
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-500 mb-1">카테고리</label>
-                <input
-                  type="text"
-                  list="category-suggestions"
-                  class="edit-category-input w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-                  value="${escapeHtml(item.category || '')}"
-                >
-              </div>
-              <div class="flex-1 flex flex-col">
-                <label class="block text-xs font-medium text-slate-500 mb-1">내용</label>
-                <textarea
-                  rows="4"
-                  class="edit-content-input w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 resize-y flex-1"
-                >${escapeHtml(item.content)}</textarea>
-              </div>
-            </div>
-            <div class="flex items-center gap-3 mt-4">
-              <button
-                type="button"
-                data-id="${item.id}"
-                class="save-edit-btn inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
-              >
-                저장하기
-              </button>
-              <button
-                type="button"
-                data-id="${item.id}"
-                class="cancel-edit-btn inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
-              >
-                취소
-              </button>
-            </div>
-          `;
+    // DOM Elements
+    const form = document.getElementById('prompt-form');
+    const titleInput = document.getElementById('prompt-title');
+    const contentInput = document.getElementById('prompt-content');
+    const categoryInput = document.getElementById('prompt-category');
+    const categorySuggestions = document.getElementById('category-suggestions');
+    const editingIdStore = document.getElementById('editing-id-store');
+    const formTitleHeading = document.getElementById('form-title-heading');
+    const formSubmitBtn = document.getElementById('form-submit-btn');
+    const formCancelBtn = document.getElementById('form-cancel-btn');
 
-          listEl.appendChild(card);
-          return;
+    const filtersEl = document.getElementById('category-filters');
+    const sortSelect = document.getElementById('sort-select');
+    const searchInput = document.getElementById('search-input');
+    const listEl = document.getElementById('prompt-list');
+    const emptyState = document.getElementById('empty-state');
+
+    const statTotal = document.getElementById('stat-total');
+    const statPinned = document.getElementById('stat-pinned');
+    const statUsage = document.getElementById('stat-usage');
+
+    // AI Modal Elements
+    const evalToggleBtn = document.getElementById('eval-toggle-btn');
+    const evalModalOverlay = document.getElementById('eval-modal-overlay');
+    const evalModalClose = document.getElementById('eval-modal-close');
+    const evalChatMessages = document.getElementById('eval-chat-messages');
+    const evalChatForm = document.getElementById('eval-chat-form');
+    const evalChatInput = document.getElementById('eval-chat-input');
+    const evalChatSendBtn = document.getElementById('eval-chat-send-btn');
+
+    // Variable Modal Elements
+    const variableModalOverlay = document.getElementById('variable-modal-overlay');
+    const variableModalClose = document.getElementById('variable-modal-close');
+    const variableFieldsContainer = document.getElementById('variable-fields-container');
+    const variablePreviewText = document.getElementById('variable-preview-text');
+    const variableCopyBtn = document.getElementById('variable-copy-btn');
+
+    // State Variables
+    let prompts = loadPrompts();
+    let currentFilter = 'all';
+    let currentSort = 'latest';
+    let currentSearch = '';
+    let activeVariablePrompt = null;
+
+    // Toast Manager
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast-popup px-4 py-3 rounded-xl text-xs font-bold text-white shadow-xl flex items-center gap-2 border ${
+        type === 'success' ? 'bg-indigo-600 border-indigo-400' : 'bg-slate-800 border-slate-600'
+      }`;
+      toast.innerHTML = `<span>✨</span> <span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 2400);
+    }
+
+    // Helper Functions
+    function loadPrompts() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return getDefaultSeedData();
+        const data = JSON.parse(raw);
+        return data.map(item => ({
+          id: item.id || Date.now(),
+          title: item.title || '',
+          content: item.content || '',
+          category: item.category || '',
+          isPinned: !!item.isPinned,
+          useCount: item.useCount || 0,
+          createdAt: item.createdAt || new Date().toISOString(),
+          updatedAt: item.updatedAt || new Date().toISOString()
+        }));
+      } catch (e) {
+        console.error('저장 데이터를 불러오지 못했습니다.', e);
+        return [];
+      }
+    }
+
+    function savePrompts(items) {
+      prompts = items;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(prompts));
+      render();
+    }
+
+    function getDefaultSeedData() {
+      return [
+        {
+          id: 'seed-1',
+          title: 'Python 코딩 스타일 및 보안 리팩터링',
+          content: 'You are an expert Python Security Engineer. Review the following {{언어}} code for OWASP vulnerabilities and PEP8 compliance:\n\n{{코드}}',
+          category: '개발',
+          isPinned: true,
+          useCount: 5,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'seed-2',
+          title: '자연스러운 영한 테크니컬 문서 번역',
+          content: 'Translate the following English technical documentation into natural, professional Korean. Keep code blocks unchanged and preserve markdown formatting:\n\n{{문서내용}}',
+          category: '번역',
+          isPinned: false,
+          useCount: 3,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         }
+      ];
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function extractVariables(text) {
+      if (!text) return [];
+      const regex = /\{\{([^}]+)\}\}/g;
+      const matches = [];
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const varName = match[1].trim();
+        if (varName && !matches.includes(varName)) {
+          matches.push(varName);
+        }
+      }
+      return matches;
+    }
+
+    function getCategories() {
+      const set = new Set(DEFAULT_CATEGORIES);
+      prompts.forEach((p) => {
+        if (p.category) set.add(p.category);
+      });
+      return Array.from(set);
+    }
+
+    function updateStats() {
+      statTotal.textContent = prompts.length;
+      statPinned.textContent = prompts.filter(p => p.isPinned).length;
+      const totalUses = prompts.reduce((acc, cur) => acc + (cur.useCount || 0), 0);
+      statUsage.textContent = totalUses;
+    }
+
+    function renderSuggestions() {
+      categorySuggestions.innerHTML = getCategories()
+        .map((c) => `<option value="${escapeHtml(c)}"></option>`)
+        .join('');
+    }
+
+    function renderFilters() {
+      const categories = getCategories();
+
+      if (currentFilter !== 'all' && currentFilter !== 'pinned' && !categories.includes(currentFilter)) {
+        currentFilter = 'all';
+      }
+
+      const filterList = [
+        { id: 'all', label: '전체', count: prompts.length },
+        { id: 'pinned', label: '⭐ 즐겨찾기', count: prompts.filter(p => p.isPinned).length },
+        ...categories.map(cat => ({
+          id: cat,
+          label: cat,
+          count: prompts.filter(p => p.category === cat).length
+        }))
+      ];
+
+      filtersEl.innerHTML = filterList.map(f => {
+        const isActive = currentFilter === f.id;
+        const activeClass = 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border-indigo-500';
+        const inactiveClass = 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700';
+        return `
+          <button
+            type="button"
+            data-filter="${escapeHtml(f.id)}"
+            class="filter-btn shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${isActive ? activeClass : inactiveClass}"
+          >
+            ${escapeHtml(f.label)} <span class="opacity-75 text-[10px]">(${f.count})</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function getFilteredAndSortedPrompts() {
+      let filtered = prompts.filter(item => {
+        // Category / Pin filter
+        if (currentFilter === 'pinned' && !item.isPinned) return false;
+        if (currentFilter !== 'all' && currentFilter !== 'pinned' && item.category !== currentFilter) return false;
+        
+        // Search Filter
+        if (currentSearch.trim()) {
+          const q = currentSearch.toLowerCase();
+          const matchTitle = item.title.toLowerCase().includes(q);
+          const matchContent = item.content.toLowerCase().includes(q);
+          const matchCategory = (item.category || '').toLowerCase().includes(q);
+          if (!matchTitle && !matchContent && !matchCategory) return false;
+        }
+        return true;
+      });
+
+      // Sorting: Pinned items always stay at top unless sorting explicitly overridden
+      filtered.sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+
+        if (currentSort === 'usage') {
+          return (b.useCount || 0) - (a.useCount || 0);
+        } else if (currentSort === 'name') {
+          return a.title.localeCompare(b.title, 'ko');
+        } else { // latest
+          return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
+        }
+      });
+
+      return filtered;
+    }
+
+    function render() {
+      updateStats();
+      renderSuggestions();
+      renderFilters();
+
+      const visiblePrompts = getFilteredAndSortedPrompts();
+      listEl.innerHTML = '';
+      emptyState.classList.toggle('hidden', visiblePrompts.length > 0);
+
+      visiblePrompts.forEach(item => {
+        const vars = extractVariables(item.content);
+        const card = document.createElement('div');
+        card.className = `slate-card rounded-2xl p-6 flex flex-col justify-between group ${item.isPinned ? 'border-amber-500/40 bg-slate-800/40' : ''}`;
 
         const categoryBadge = item.category
-          ? `<span class="inline-block bg-indigo-50 text-indigo-600 text-xs font-medium px-2 py-0.5 rounded-full mb-2">${escapeHtml(item.category)}</span>`
+          ? `<span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mb-2">${escapeHtml(item.category)}</span>`
           : '';
 
+        const pinStarBtn = `
+          <button
+            type="button"
+            data-id="${item.id}"
+            class="pin-btn text-lg transition-transform hover:scale-125 ${item.isPinned ? 'text-amber-400' : 'text-slate-600 hover:text-amber-400'}"
+            title="${item.isPinned ? '고정 해제' : '상단 고정'}"
+          >★</button>
+        `;
+
+        const usageBadge = `<span class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">🔥 ${item.useCount || 0}회 사용</span>`;
+        const varBadge = vars.length > 0
+          ? `<span class="text-[11px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-md">🧩 변수 ${vars.length}개</span>`
+          : '';
+
+        const actionCopyBtn = vars.length > 0
+          ? `<button
+              type="button"
+              data-id="${item.id}"
+              class="var-copy-trigger-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-cyan-600/30 hover:bg-cyan-600/40 text-cyan-300 border border-cyan-500/40 transition-all flex items-center gap-1.5"
+            >
+              ⚡ 변수 채워 복사
+            </button>`
+          : `<button
+              type="button"
+              data-id="${item.id}"
+              class="copy-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 transition-all flex items-center gap-1.5"
+            >
+              📋 복사하기
+            </button>`;
+
         card.innerHTML = `
-          <div class="flex items-start justify-between gap-2 mb-1">
-            <h2 class="font-semibold text-slate-900 break-words">${escapeHtml(item.title)}</h2>
-            <button
-              type="button"
-              data-id="${item.id}"
-              class="delete-btn shrink-0 text-slate-400 hover:text-red-500 text-sm transition-colors"
-              title="삭제"
-            >✕</button>
+          <div>
+            <div class="flex items-start justify-between gap-3 mb-2">
+              <div class="flex flex-wrap items-center gap-2">
+                ${categoryBadge}
+                ${usageBadge}
+                ${varBadge}
+              </div>
+              <div class="flex items-center gap-2">
+                ${pinStarBtn}
+                <button
+                  type="button"
+                  data-id="${item.id}"
+                  class="delete-btn text-slate-500 hover:text-rose-400 text-sm p-1 transition-colors"
+                  title="삭제"
+                >✕</button>
+              </div>
+            </div>
+            <h3 class="font-bold text-base text-white group-hover:text-indigo-300 transition-colors mb-3">
+              ${escapeHtml(item.title)}
+            </h3>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-4 text-xs font-mono text-slate-200 leading-relaxed max-h-32 overflow-hidden relative">
+              <p class="whitespace-pre-wrap break-words">${escapeHtml(item.content)}</p>
+            </div>
           </div>
-          ${categoryBadge}
-          <p class="text-sm text-slate-600 whitespace-pre-wrap break-words flex-1 mb-4">${escapeHtml(item.content)}</p>
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              data-id="${item.id}"
-              class="copy-btn whitespace-nowrap inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
-            >
-              복사하기
-            </button>
-            <button
-              type="button"
-              data-id="${item.id}"
-              class="edit-btn whitespace-nowrap inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
-            >
-              수정하기
-            </button>
-            <span class="copied-msg whitespace-nowrap text-emerald-600 text-sm font-medium opacity-0 transition-opacity">복사됨!</span>
+          <div class="flex items-center justify-between pt-3 border-t border-slate-700">
+            <span class="text-[11px] font-mono text-slate-400">
+              ${new Date(item.updatedAt || item.createdAt).toLocaleDateString('ko-KR')}
+            </span>
+            <div class="flex items-center gap-2">
+              ${actionCopyBtn}
+              <button
+                type="button"
+                data-id="${item.id}"
+                class="edit-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-950/60 hover:bg-indigo-900/80 text-indigo-300 border border-indigo-700/50 transition-all"
+              >
+                ✏️ 수정
+              </button>
+            </div>
           </div>
         `;
 
         listEl.appendChild(card);
       });
-  }
-
-  function appendChatMessage(role, text) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'flex ' + (role === 'user' ? 'justify-end' : 'justify-start');
-
-    const bubble = document.createElement('div');
-    bubble.className = role === 'user'
-      ? 'max-w-[80%] bg-indigo-600 text-white text-sm px-3 py-2 rounded-2xl rounded-br-sm whitespace-pre-wrap break-words'
-      : 'max-w-[80%] bg-slate-100 text-slate-700 text-sm px-3 py-2 rounded-2xl rounded-bl-sm whitespace-pre-wrap break-words';
-    bubble.textContent = text;
-
-    wrapper.appendChild(bubble);
-    evalChatMessages.appendChild(wrapper);
-    evalChatMessages.scrollTop = evalChatMessages.scrollHeight;
-    return bubble;
-  }
-
-  function showTypingIndicator(bubble) {
-    bubble.innerHTML = `
-      <span class="inline-flex items-center gap-1.5 py-0.5">
-        <span class="text-slate-500">입력 중</span>
-        <span class="flex gap-0.5">
-          <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
-          <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay:150ms"></span>
-          <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay:300ms"></span>
-        </span>
-      </span>
-    `;
-  }
-
-  // "event: chunk\ndata: {...}" 형태의 SSE 이벤트 블록 하나를 파싱한다.
-  function parseSseEvent(rawBlock) {
-    let event = null;
-    let dataStr = '';
-    for (const line of rawBlock.split('\n')) {
-      if (line.startsWith('event:')) event = line.slice(6).trim();
-      else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
-    }
-    if (!event || !dataStr) return null;
-    try {
-      return { event, data: JSON.parse(dataStr) };
-    } catch {
-      return null;
-    }
-  }
-
-  function setEvalFormBusy(busy) {
-    evalChatInput.disabled = busy;
-    evalChatSendBtn.disabled = busy;
-  }
-
-  async function sendEvalMessage(text) {
-    appendChatMessage('user', text);
-    setEvalFormBusy(true);
-
-    const assistantBubble = appendChatMessage('assistant', '');
-    showTypingIndicator(assistantBubble);
-
-    let accumulated = '';
-    let gotContent = false;
-
-    try {
-      const response = await fetch(EVALUATE_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: text }),
-      });
-
-      if (!response.ok || !response.body) {
-        throw new Error('요청 실패: HTTP ' + response.status);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const blocks = buffer.split('\n\n');
-        buffer = blocks.pop(); // 완성되지 않은 마지막 블록은 다음 chunk와 합치기 위해 버퍼에 남김
-
-        for (const rawBlock of blocks) {
-          const parsed = parseSseEvent(rawBlock);
-          if (!parsed) continue;
-
-          if (parsed.event === 'chunk') {
-            if (!gotContent) {
-              gotContent = true;
-              assistantBubble.textContent = '';
-            }
-            accumulated += parsed.data.text;
-            assistantBubble.textContent = accumulated;
-            evalChatMessages.scrollTop = evalChatMessages.scrollHeight;
-          } else if (parsed.event === 'error') {
-            accumulated = gotContent
-              ? accumulated + '\n\n' + parsed.data.message
-              : parsed.data.message;
-            assistantBubble.textContent = accumulated;
-            gotContent = true;
-          }
-          // 'done' 이벤트는 별도 처리 없이 스트림 종료만 기다리면 됨
-        }
-      }
-
-      if (!gotContent) {
-        assistantBubble.textContent = EVALUATE_FALLBACK_MESSAGE;
-      }
-    } catch (err) {
-      console.error('평가 요청 중 오류:', err);
-      assistantBubble.textContent = gotContent
-        ? accumulated + '\n\n' + EVALUATE_FALLBACK_MESSAGE
-        : EVALUATE_FALLBACK_MESSAGE;
-    } finally {
-      setEvalFormBusy(false);
-      evalChatInput.focus();
-    }
-  }
-
-  function openEvalModal() {
-    evalModalOverlay.classList.remove('hidden');
-    evalChatInput.focus();
-  }
-
-  function closeEvalModal() {
-    evalModalOverlay.classList.add('hidden');
-  }
-
-  function toggleEvalModal() {
-    if (evalModalOverlay.classList.contains('hidden')) {
-      openEvalModal();
-    } else {
-      closeEvalModal();
-    }
-  }
-
-  evalToggleBtn.addEventListener('click', toggleEvalModal);
-
-  evalModalClose.addEventListener('click', closeEvalModal);
-
-  evalModalOverlay.addEventListener('click', (e) => {
-    if (e.target === evalModalOverlay) closeEvalModal();
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !evalModalOverlay.classList.contains('hidden')) {
-      closeEvalModal();
-    }
-  });
-
-  evalChatForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (evalChatSendBtn.disabled) return;
-
-    const text = evalChatInput.value.trim();
-    if (!text) return;
-
-    evalChatInput.value = '';
-    sendEvalMessage(text);
-  });
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const title = titleInput.value.trim();
-    const content = contentInput.value.trim();
-    const category = categoryInput.value.trim();
-    if (!title || !content) return;
-
-    prompts.push({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-      title,
-      content,
-      category,
-    });
-
-    savePrompts(prompts);
-    render();
-    form.reset();
-    titleInput.focus();
-  });
-
-  filtersEl.addEventListener('click', (e) => {
-    const btn = e.target.closest('.filter-btn');
-    if (!btn) return;
-    currentFilter = btn.dataset.filter;
-    render();
-  });
-
-  listEl.addEventListener('click', async (e) => {
-    const copyBtn = e.target.closest('.copy-btn');
-    const deleteBtn = e.target.closest('.delete-btn');
-    const editBtn = e.target.closest('.edit-btn');
-    const saveEditBtn = e.target.closest('.save-edit-btn');
-    const cancelEditBtn = e.target.closest('.cancel-edit-btn');
-
-    if (editBtn) {
-      editingId = editBtn.dataset.id;
-      render();
-      return;
     }
 
-    if (cancelEditBtn) {
-      editingId = null;
-      render();
-      return;
-    }
+    // Form Event Listeners (Add & Edit)
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
+      const category = categoryInput.value.trim();
+      const editingId = editingIdStore.value;
 
-    if (saveEditBtn) {
-      const id = saveEditBtn.dataset.id;
-      const item = prompts.find((p) => p.id === id);
-      if (!item) return;
-
-      const card = saveEditBtn.closest('.prompt-card');
-      const title = card.querySelector('.edit-title-input').value.trim();
-      const content = card.querySelector('.edit-content-input').value.trim();
-      const category = card.querySelector('.edit-category-input').value.trim();
       if (!title || !content) return;
 
-      item.title = title;
-      item.content = content;
-      item.category = category;
+      if (editingId) {
+        // Edit Mode
+        const updated = prompts.map(p => {
+          if (String(p.id) === String(editingId)) {
+            return {
+              ...p,
+              title,
+              content,
+              category,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return p;
+        });
+        savePrompts(updated);
+        showToast('프롬프트가 수정되었습니다!');
+        resetForm();
+      } else {
+        // Create Mode
+        const newPrompt = {
+          id: Date.now(),
+          title,
+          content,
+          category,
+          isPinned: false,
+          useCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        savePrompts([newPrompt, ...prompts]);
+        showToast('새 프롬프트가 보관되었습니다!');
+        resetForm();
+      }
+    });
 
-      savePrompts(prompts);
-      editingId = null;
-      render();
-      return;
+    function resetForm() {
+      form.reset();
+      editingIdStore.value = '';
+      formTitleHeading.innerHTML = `<span class="text-indigo-400">✨</span> 새 프롬프트 보관하기`;
+      formSubmitBtn.innerHTML = `<span>+</span> 프롬프트 저장하기`;
+      formCancelBtn.classList.add('hidden');
     }
 
-    if (copyBtn) {
-      const id = copyBtn.dataset.id;
-      const item = prompts.find((p) => p.id === id);
-      if (!item) return;
+    formCancelBtn.addEventListener('click', resetForm);
 
-      try {
-        await navigator.clipboard.writeText(item.content);
-      } catch (err) {
-        const textarea = document.createElement('textarea');
-        textarea.value = item.content;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
+    // List Event Delegation (Pin, Delete, Edit, Copy, Variable Copy)
+    listEl.addEventListener('click', (e) => {
+      const pinBtn = e.target.closest('.pin-btn');
+      const deleteBtn = e.target.closest('.delete-btn');
+      const editBtn = e.target.closest('.edit-btn');
+      const copyBtn = e.target.closest('.copy-btn');
+      const varCopyTriggerBtn = e.target.closest('.var-copy-trigger-btn');
+
+      if (pinBtn) {
+        const id = pinBtn.dataset.id;
+        const updated = prompts.map(p => String(p.id) === String(id) ? { ...p, isPinned: !p.isPinned } : p);
+        savePrompts(updated);
+        showToast(updated.find(p => String(p.id) === String(id)).isPinned ? '즐겨찾기에 고정되었습니다! ⭐️' : '고정이 해제되었습니다.');
+        return;
       }
 
-      const msg = copyBtn.parentElement.querySelector('.copied-msg');
-      msg.classList.remove('opacity-0');
-      clearTimeout(msg._timer);
-      msg._timer = setTimeout(() => msg.classList.add('opacity-0'), 1500);
-    }
+      if (deleteBtn) {
+        const id = deleteBtn.dataset.id;
+        if (confirm('이 프롬프트를 보관함에서 삭제하시겠습니까?')) {
+          const updated = prompts.filter(p => String(p.id) !== String(id));
+          savePrompts(updated);
+          showToast('삭제되었습니다.', 'info');
+        }
+        return;
+      }
 
-    if (deleteBtn) {
-      const id = deleteBtn.dataset.id;
-      prompts = prompts.filter((p) => p.id !== id);
-      savePrompts(prompts);
+      if (editBtn) {
+        const id = editBtn.dataset.id;
+        const target = prompts.find(p => String(p.id) === String(id));
+        if (target) {
+          titleInput.value = target.title;
+          contentInput.value = target.content;
+          categoryInput.value = target.category || '';
+          editingIdStore.value = target.id;
+
+          formTitleHeading.innerHTML = `<span class="text-amber-400">✏️</span> 프롬프트 수정하기`;
+          formSubmitBtn.innerHTML = `<span>✓</span> 수정사항 저장`;
+          formCancelBtn.classList.remove('hidden');
+          document.getElementById('form-container').scrollIntoView({ behavior: 'smooth' });
+        }
+        return;
+      }
+
+      if (copyBtn) {
+        const id = copyBtn.dataset.id;
+        const target = prompts.find(p => String(p.id) === String(id));
+        if (target) {
+          navigator.clipboard.writeText(target.content).then(() => {
+            target.useCount = (target.useCount || 0) + 1;
+            target.updatedAt = new Date().toISOString();
+            savePrompts(prompts);
+            showToast('클립보드에 복사되었습니다! 📋');
+          });
+        }
+        return;
+      }
+
+      if (varCopyTriggerBtn) {
+        const id = varCopyTriggerBtn.dataset.id;
+        const target = prompts.find(p => String(p.id) === String(id));
+        if (target) {
+          openVariableModal(target);
+        }
+        return;
+      }
+    });
+
+    // Category Filter Buttons Event
+    filtersEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.filter-btn');
+      if (btn) {
+        currentFilter = btn.dataset.filter;
+        render();
+      }
+    });
+
+    // Search Input Event
+    searchInput.addEventListener('input', (e) => {
+      currentSearch = e.target.value;
       render();
+    });
+
+    // Sort Selection Event
+    sortSelect.addEventListener('change', (e) => {
+      currentSort = e.target.value;
+      render();
+    });
+
+    // Variable Modal Logic
+    function openVariableModal(item) {
+      activeVariablePrompt = item;
+      const vars = extractVariables(item.content);
+      variableFieldsContainer.innerHTML = '';
+
+      vars.forEach((v) => {
+        const field = document.createElement('div');
+        field.innerHTML = `
+          <label class="block text-xs font-bold text-slate-300 mb-1">변수: <code class="text-cyan-300 font-mono">{{${escapeHtml(v)}}}</code></label>
+          <input
+            type="text"
+            data-var="${escapeHtml(v)}"
+            placeholder="${escapeHtml(v)} 입력..."
+            class="var-input w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-medium"
+          >
+        `;
+        variableFieldsContainer.appendChild(field);
+      });
+
+      updateVariablePreview();
+      variableModalOverlay.classList.remove('hidden');
     }
-  });
 
-  render();
-</script>
+    function updateVariablePreview() {
+      if (!activeVariablePrompt) return;
+      let filled = activeVariablePrompt.content;
+      const inputs = variableFieldsContainer.querySelectorAll('.var-input');
 
+      inputs.forEach(input => {
+        const varName = input.dataset.var;
+        const val = input.value.trim() || `{{${varName}}}`;
+        filled = filled.replaceAll(`{{${varName}}}`, val);
+      });
+
+      variablePreviewText.textContent = filled;
+    }
+
+    variableFieldsContainer.addEventListener('input', updateVariablePreview);
+
+    variableCopyBtn.addEventListener('click', () => {
+      if (!activeVariablePrompt) return;
+      const textToCopy = variablePreviewText.textContent;
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        activeVariablePrompt.useCount = (activeVariablePrompt.useCount || 0) + 1;
+        activeVariablePrompt.updatedAt = new Date().toISOString();
+        savePrompts(prompts);
+        variableModalOverlay.classList.add('hidden');
+        showToast('템플릿 프롬프트가 복사되었습니다! ⚡');
+      });
+    });
+
+    variableModalClose.addEventListener('click', () => {
+      variableModalOverlay.classList.add('hidden');
+    });
+
+    const evalResetBtn = document.getElementById('eval-reset-btn');
+
+    function resetEvalChat() {
+      evalChatMessages.innerHTML = '';
+      evalChatInput.value = '';
+    }
+
+    function closeEvalModal() {
+      evalModalOverlay.classList.add('hidden');
+      resetEvalChat();
+    }
+
+    // AI Evaluator Floating Modal & Streaming logic
+    evalToggleBtn.addEventListener('click', () => {
+      evalModalOverlay.classList.remove('hidden');
+      evalChatInput.focus();
+    });
+
+    evalModalClose.addEventListener('click', closeEvalModal);
+
+    evalResetBtn.addEventListener('click', () => {
+      resetEvalChat();
+      evalChatInput.focus();
+      showToast('대화 내역이 초기화되었습니다.', 'info');
+    });
+
+    function appendChatMessage(role, text) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex ' + (role === 'user' ? 'justify-end' : 'justify-start');
+
+      const container = document.createElement('div');
+      container.className = 'max-w-[85%] space-y-2';
+
+      const bubble = document.createElement('div');
+      bubble.className = role === 'user'
+        ? 'bg-indigo-600 text-white text-xs px-4 py-3 rounded-2xl rounded-br-sm whitespace-pre-wrap break-words leading-relaxed'
+        : 'bg-slate-800 border border-slate-700 text-slate-100 text-xs px-4 py-3 rounded-2xl rounded-bl-sm whitespace-pre-wrap break-words leading-relaxed font-mono';
+      bubble.textContent = text;
+      container.appendChild(bubble);
+
+      wrapper.appendChild(container);
+      evalChatMessages.appendChild(wrapper);
+      evalChatMessages.scrollTop = evalChatMessages.scrollHeight;
+      return { container, bubble };
+    }
+
+    function showTypingIndicator(bubble) {
+      bubble.innerHTML = `
+        <span class="inline-flex items-center gap-1.5 py-0.5">
+          <span class="text-slate-400">AI 평가 엔진 분석 중</span>
+          <span class="flex gap-1">
+            <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
+            <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:150ms"></span>
+            <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:300ms"></span>
+          </span>
+        </span>
+      `;
+    }
+
+    function parseSseEvent(rawBlock) {
+      let event = null;
+      let dataStr = '';
+      for (const line of rawBlock.split('\n')) {
+        if (line.startsWith('event:')) event = line.slice(6).trim();
+        else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
+      }
+      if (!event || !dataStr) return null;
+      try {
+        return { event, data: JSON.parse(dataStr) };
+      } catch {
+        return null;
+      }
+    }
+
+    function extractPromptExample(fullText) {
+      if (!fullText) return '';
+      let exampleText = '';
+      const exampleHeaderRegex = /(?:✏️\s*예시|예시)\s*:?\s*\n?/i;
+      const match = fullText.match(exampleHeaderRegex);
+
+      if (match) {
+        const startIndex = match.index + match[0].length;
+        exampleText = fullText.slice(startIndex).trim();
+      } else {
+        const codeBlockMatch = fullText.match(/```(?:\w+)?\n([\s\S]*?)```/);
+        if (codeBlockMatch) {
+          exampleText = codeBlockMatch[1].trim();
+        } else {
+          exampleText = fullText.trim();
+        }
+      }
+      return exampleText.replace(/^["'“`]+|["'”`]+$/g, '').trim() || fullText;
+    }
+
+    function addSaveToArchiveBtn(container, assistantText) {
+      const btnWrapper = document.createElement('div');
+      btnWrapper.className = 'mt-2 flex justify-start';
+      btnWrapper.innerHTML = `
+        <button
+          type="button"
+          class="save-from-ai-btn bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5"
+        >
+          <span>📥</span> 예시 프롬프트만 보관함에 저장하기
+        </button>
+      `;
+
+      btnWrapper.querySelector('.save-from-ai-btn').addEventListener('click', () => {
+        const extractedPrompt = extractPromptExample(assistantText);
+        titleInput.value = 'AI 검토 개선 프롬프트';
+        contentInput.value = extractedPrompt;
+        
+        closeEvalModal();
+        document.getElementById('form-container').scrollIntoView({ behavior: 'smooth' });
+        contentInput.focus();
+        showToast('AI 예시 프롬프트만 보관함 등록 폼에 입력되었습니다! 📥');
+      });
+
+      container.appendChild(btnWrapper);
+      evalChatMessages.scrollTop = evalChatMessages.scrollHeight;
+    }
+
+    evalChatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = evalChatInput.value.trim();
+      if (!text) return;
+
+      evalChatInput.value = '';
+      appendChatMessage('user', text);
+
+      evalChatInput.disabled = true;
+      evalChatSendBtn.disabled = true;
+
+      const { container, bubble } = appendChatMessage('assistant', '');
+      showTypingIndicator(bubble);
+
+      let accumulated = '';
+      let gotContent = false;
+
+      try {
+        const response = await fetch(EVALUATE_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: text }),
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error('요청 실패: HTTP ' + response.status);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split('\n\n');
+          buffer = blocks.pop();
+
+          for (const rawBlock of blocks) {
+            const parsed = parseSseEvent(rawBlock);
+            if (!parsed) continue;
+
+            if (parsed.event === 'chunk') {
+              if (!gotContent) {
+                gotContent = true;
+                bubble.textContent = '';
+              }
+              accumulated += parsed.data.text;
+              bubble.textContent = accumulated;
+              evalChatMessages.scrollTop = evalChatMessages.scrollHeight;
+            } else if (parsed.event === 'done') {
+              addSaveToArchiveBtn(container, accumulated);
+            }
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        bubble.textContent = '평가 엔진 연결 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+      } finally {
+        evalChatInput.disabled = false;
+        evalChatSendBtn.disabled = false;
+        evalChatInput.focus();
+      }
+    });
+
+    // Initial Load Render
+    render();
+  </script>
 </body>
 </html>

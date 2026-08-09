@@ -21,6 +21,23 @@ app.use(express.json());
 // Serve static files (index.html, etc.) from the project root
 app.use(express.static(__dirname));
 
+// 브라우저가 주기적으로 보내는 하트비트가 일정 시간 끊기면(=브라우저를 닫음) 서버를 자동 종료한다.
+// 첫 하트비트를 받기 전에는(=브라우저가 아직 뜨는 중이거나, 브라우저 없이 서버만 켠 경우) 종료하지 않는다.
+const HEARTBEAT_TIMEOUT_MS = 10000;
+let lastHeartbeatAt = null;
+
+app.post('/api/heartbeat', (req, res) => {
+  lastHeartbeatAt = Date.now();
+  res.sendStatus(204);
+});
+
+setInterval(() => {
+  if (lastHeartbeatAt !== null && Date.now() - lastHeartbeatAt > HEARTBEAT_TIMEOUT_MS) {
+    console.log('브라우저 연결이 끊긴 것으로 감지되어 서버를 종료합니다.');
+    process.exit(0);
+  }
+}, 3000);
+
 function loadModels() {
   const raw = fs.readFileSync(MODELS_PATH, 'utf-8');
   const models = JSON.parse(raw);
