@@ -33,6 +33,10 @@
   }
 </script>
 <style>
+  html {
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+  }
   body {
     background-color: #0F172A;
     background-image: 
@@ -86,8 +90,14 @@
     background: rgba(100, 116, 139, 0.35);
     border-radius: 9999px;
   }
-  .custom-h-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(129, 140, 248, 0.8);
+  /* Terminal Box Styling for Command Cards */
+  .terminal-box {
+    background: #090D16;
+    border: 1px solid #1E293B;
+  }
+  .terminal-box:hover {
+    border-color: rgba(6, 182, 212, 0.4);
+    box-shadow: 0 0 15px -3px rgba(6, 182, 212, 0.15);
   }
   .toast-popup {
     animation: toastFade 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -121,12 +131,32 @@
   </header>
 
   <main class="max-w-6xl mx-auto px-4">
+    <!-- Workspace Mode Switcher Tabs -->
+    <div class="flex items-center gap-3 mb-6">
+      <button
+        id="mode-tab-prompt"
+        type="button"
+        class="mode-tab-btn flex-1 sm:flex-none px-6 py-2.5 rounded-2xl text-sm font-bold border transition-all flex items-center justify-center gap-2.5 shadow-lg bg-indigo-600 text-white border-indigo-500 shadow-indigo-500/25"
+      >
+        <span class="text-base">✨</span> 프롬프트 보관함
+        <span id="badge-count-prompt" class="px-2 py-0.5 rounded-full text-xs bg-indigo-950/60 text-indigo-200 border border-indigo-400/30 font-mono">0</span>
+      </button>
+      <button
+        id="mode-tab-command"
+        type="button"
+        class="mode-tab-btn flex-1 sm:flex-none px-6 py-2.5 rounded-2xl text-sm font-bold border transition-all flex items-center justify-center gap-2.5 shadow-sm bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-800"
+      >
+        <span class="text-base">⚡</span> 명령어 보관함
+        <span id="badge-count-command" class="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-400 border border-slate-700 font-mono">0</span>
+      </button>
+    </div>
+
     <!-- Quick Stats Dashboard -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
       <div class="slate-card rounded-2xl p-5 flex items-center justify-between">
         <div>
-          <p class="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">Total Prompts</p>
-          <p id="stat-total" class="text-3xl font-black text-white">0 <span class="text-xs font-normal text-slate-400 ml-1">보관됨</span></p>
+          <p id="stat-total-label" class="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">Total Prompts</p>
+          <p id="stat-total" class="text-3xl font-black text-white">0 <span id="stat-total-unit" class="text-xs font-normal text-slate-400 ml-1">보관됨</span></p>
         </div>
         <div class="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 text-xl">
           📂
@@ -168,7 +198,7 @@
         <h2 id="form-title-heading" class="text-lg font-bold text-white flex items-center gap-2">
           <span class="text-indigo-400">✨</span> 새 프롬프트 보관하기
         </h2>
-        <span class="text-xs font-mono text-slate-400 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
+        <span id="form-tip-text" class="text-xs font-mono text-slate-400 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
           Tip: <code class="text-indigo-300 font-bold">{{변수명}}</code>을 쓰면 템플릿으로 변환됩니다
         </span>
       </div>
@@ -178,35 +208,37 @@
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="md:col-span-2">
-            <label for="prompt-title" class="block text-xs font-bold text-slate-300 mb-1.5">제목</label>
-            <input
+            <label id="form-label-title" for="prompt-title" class="block text-xs font-bold text-slate-300 mb-1.5">제목</label>
+            <textarea
               id="prompt-title"
-              type="text"
+              rows="1"
               autocomplete="off"
               placeholder="예: Python 코딩 스타일 및 보안 리팩터링"
-              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all"
+              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all resize-none"
               required
-            >
+            ></textarea>
           </div>
           <div>
-            <label for="prompt-category" class="block text-xs font-bold text-slate-300 mb-1.5">카테고리</label>
+            <label id="form-label-category" for="prompt-category" class="block text-xs font-bold text-slate-300 mb-1.5">카테고리</label>
             <input
               id="prompt-category"
               type="text"
               autocomplete="off"
+              list="category-datalist"
               placeholder="개발, 기획, 업무..."
               class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all"
             >
+            <datalist id="category-datalist"></datalist>
           </div>
         </div>
 
         <div>
-          <label for="prompt-content" class="block text-xs font-bold text-slate-300 mb-1.5">프롬프트 지시문</label>
+          <label id="form-label-content" for="prompt-content" class="block text-xs font-bold text-slate-300 mb-1.5">프롬프트 지시문</label>
           <textarea
             id="prompt-content"
             rows="4"
             placeholder="프롬프트 내용을 입력하세요... 예: 다음 {{언어}} 코드를 {{목적}} 기준에 맞게 리팩터링해줘."
-            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-mono transition-all resize-y"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-mono transition-all resize-none"
             required
           ></textarea>
         </div>
@@ -296,10 +328,10 @@
       id="eval-toggle-btn"
       type="button"
       class="btn-accent text-white font-bold px-5 py-3.5 rounded-full shadow-2xl transition-all flex items-center gap-2.5 hover:scale-105"
-      title="AI 프롬프트 평가 대화창 열기"
+      title="AI 평가 및 추천 대화창 열기"
     >
-      <span class="text-lg">✨</span>
-      <span>AI 평가 & 샌드박스</span>
+      <span id="eval-toggle-icon" class="text-lg">✨</span>
+      <span id="eval-toggle-text">AI 평가 & 샌드박스</span>
       <span class="w-2 h-2 rounded-full bg-cyan-300 animate-ping"></span>
     </button>
   </div>
@@ -312,12 +344,12 @@
     <div class="slate-card rounded-2xl shadow-2xl border border-slate-700 w-full max-w-[620px] max-h-[85vh] flex flex-col overflow-hidden">
       <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700 bg-slate-800/50 shrink-0">
         <div class="flex items-center gap-2.5">
-          <div class="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 text-sm">
+          <div id="eval-modal-icon" class="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 text-sm">
             ✨
           </div>
           <div>
-            <h2 class="font-bold text-white text-base">AI 프롬프트 검토 샌드박스</h2>
-            <p class="text-[11px] text-slate-400 font-mono">저장하기 전 프롬프트를 다듬고 바로 보관함에 저장하세요</p>
+            <h2 id="eval-modal-title" class="font-bold text-white text-base">AI 프롬프트 검토 샌드박스</h2>
+            <p id="eval-modal-subtitle" class="text-[11px] text-slate-400 font-mono">저장하기 전 프롬프트를 다듬고 바로 보관함에 저장하세요</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -508,7 +540,21 @@
     const DEFAULT_CATEGORIES = ['개발', '기획', '업무'];
     const EVALUATE_ENDPOINT = '/api/evaluate';
 
-    // DOM Elements
+    // Workspace Mode Elements
+    const modeTabPrompt = document.getElementById('mode-tab-prompt');
+    const modeTabCommand = document.getElementById('mode-tab-command');
+    const badgeCountPrompt = document.getElementById('badge-count-prompt');
+    const badgeCountCommand = document.getElementById('badge-count-command');
+
+    // Dynamic Form & Stat Label Elements
+    const formTipText = document.getElementById('form-tip-text');
+    const formLabelTitle = document.getElementById('form-label-title');
+    const formLabelCategory = document.getElementById('form-label-category');
+    const formLabelContent = document.getElementById('form-label-content');
+    const statTotalLabel = document.getElementById('stat-total-label');
+    const statTotalUnit = document.getElementById('stat-total-unit');
+
+    // Form Elements
     const form = document.getElementById('prompt-form');
     const titleInput = document.getElementById('prompt-title');
     const contentInput = document.getElementById('prompt-content');
@@ -531,7 +577,12 @@
 
     // AI Modal Elements
     const evalToggleBtn = document.getElementById('eval-toggle-btn');
+    const evalToggleIcon = document.getElementById('eval-toggle-icon');
+    const evalToggleText = document.getElementById('eval-toggle-text');
     const evalModalOverlay = document.getElementById('eval-modal-overlay');
+    const evalModalIcon = document.getElementById('eval-modal-icon');
+    const evalModalTitle = document.getElementById('eval-modal-title');
+    const evalModalSubtitle = document.getElementById('eval-modal-subtitle');
     const evalModalClose = document.getElementById('eval-modal-close');
     const evalChatMessages = document.getElementById('eval-chat-messages');
     const evalChatForm = document.getElementById('eval-chat-form');
@@ -566,6 +617,7 @@
     let stagedFileName = '';
 
     // State Variables
+    let currentMode = 'prompt'; // 'prompt' | 'command'
     let prompts = loadPrompts();
     let currentFilter = 'all';
     let currentSort = 'latest';
@@ -585,6 +637,13 @@
     }
 
     // Helper Functions
+    function normalizeCategory(cat) {
+      if (!cat || typeof cat !== 'string') return '';
+      const trimmed = cat.trim();
+      if (!trimmed) return '';
+      return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+    }
+
     function loadPrompts() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -592,9 +651,10 @@
         const data = JSON.parse(raw);
         return data.map(item => ({
           id: item.id || Date.now(),
+          type: item.type || 'prompt', // Single point normalization!
           title: item.title || '',
           content: item.content || '',
-          category: item.category || '',
+          category: normalizeCategory(item.category || ''),
           isPinned: !!item.isPinned,
           useCount: item.useCount || 0,
           createdAt: item.createdAt || new Date().toISOString(),
@@ -616,6 +676,7 @@
       return [
         {
           id: 'seed-1',
+          type: 'prompt',
           title: 'Python 코딩 스타일 및 보안 리팩터링',
           content: 'You are an expert Python Security Engineer. Review the following {{언어}} code for OWASP vulnerabilities and PEP8 compliance:\n\n{{코드}}',
           category: '개발',
@@ -626,11 +687,34 @@
         },
         {
           id: 'seed-2',
+          type: 'prompt',
           title: '자연스러운 영한 테크니컬 문서 번역',
           content: 'Translate the following English technical documentation into natural, professional Korean. Keep code blocks unchanged and preserve markdown formatting:\n\n{{문서내용}}',
           category: '기획',
           isPinned: false,
           useCount: 3,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'seed-cmd-1',
+          type: 'command',
+          title: '도커 컨테이너 실시간 로그 확인',
+          content: 'docker logs -f --tail={{줄수}} {{컨테이너ID}}',
+          category: 'Docker',
+          isPinned: true,
+          useCount: 4,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'seed-cmd-2',
+          type: 'command',
+          title: '최근 커밋 메시지 수정 및 강제 푸시',
+          content: 'git commit --amend -m "{{새메시지}}" && git push origin {{브랜치명}} --force-with-lease',
+          category: 'Git',
+          isPinned: false,
+          useCount: 2,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
@@ -660,31 +744,41 @@
 
     function getCategories() {
       const set = new Set();
-      prompts.forEach((p) => {
-        if (p.category && p.category.trim()) set.add(p.category.trim());
+      prompts.filter(p => p.type === currentMode).forEach((p) => {
+        const norm = normalizeCategory(p.category);
+        if (norm) set.add(norm);
       });
       return Array.from(set);
     }
 
     function updateStats() {
-      statTotal.textContent = prompts.length;
-      statPinned.textContent = prompts.filter(p => p.isPinned).length;
-      const totalUses = prompts.reduce((acc, cur) => acc + (cur.useCount || 0), 0);
-      statUsage.textContent = totalUses;
+      const promptCount = prompts.filter(p => p.type === 'prompt').length;
+      const commandCount = prompts.filter(p => p.type === 'command').length;
+
+      if (badgeCountPrompt) badgeCountPrompt.textContent = promptCount;
+      if (badgeCountCommand) badgeCountCommand.textContent = commandCount;
+
+      const modeItems = prompts.filter(p => p.type === currentMode);
+      statTotal.innerHTML = `${modeItems.length} <span id="stat-total-unit" class="text-xs font-normal text-slate-400 ml-1">${currentMode === 'prompt' ? '보관됨' : '등록됨'}</span>`;
+      statPinned.innerHTML = `${modeItems.filter(p => p.isPinned).length} <span class="text-xs font-normal text-indigo-400 ml-1">고정됨</span>`;
+      const totalUses = modeItems.reduce((acc, cur) => acc + (cur.useCount || 0), 0);
+      statUsage.innerHTML = `${totalUses} <span class="text-xs font-normal text-emerald-400 ml-1">회 복사/사용</span>`;
+      if (statTotalLabel) statTotalLabel.textContent = currentMode === 'prompt' ? 'Total Prompts' : 'Total Commands';
     }
 
     function renderFilters() {
       const categories = getCategories();
 
-      if (currentFilter !== 'all' && currentFilter !== 'pinned' && !categories.includes(currentFilter)) {
+      if (currentFilter !== 'all' && currentFilter !== 'pinned' && !categories.some(c => c.toLowerCase() === currentFilter.toLowerCase())) {
         currentFilter = 'all';
       }
 
+      const modeItems = prompts.filter(p => p.type === currentMode);
       const categoryFilters = categories
         .map(cat => ({
           id: cat,
           label: cat,
-          count: prompts.filter(p => p.category === cat).length
+          count: modeItems.filter(p => normalizeCategory(p.category).toLowerCase() === cat.toLowerCase()).length
         }))
         .filter(f => f.count > 0);
 
@@ -697,13 +791,13 @@
       });
 
       const filterList = [
-        { id: 'all', label: '전체', count: prompts.length },
-        { id: 'pinned', label: '⭐ 즐겨찾기', count: prompts.filter(p => p.isPinned).length },
+        { id: 'all', label: '전체', count: modeItems.length },
+        { id: 'pinned', label: '⭐ 즐겨찾기', count: modeItems.filter(p => p.isPinned).length },
         ...categoryFilters
       ];
 
       filtersEl.innerHTML = filterList.map(f => {
-        const isActive = currentFilter === f.id;
+        const isActive = currentFilter.toLowerCase() === f.id.toLowerCase();
         const activeClass = 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 border-indigo-500';
         const inactiveClass = 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700';
         return `
@@ -720,9 +814,12 @@
 
     function getFilteredAndSortedPrompts() {
       let filtered = prompts.filter(item => {
+        // Mode Isolation
+        if (item.type !== currentMode) return false;
+
         // Category / Pin filter
         if (currentFilter === 'pinned' && !item.isPinned) return false;
-        if (currentFilter !== 'all' && currentFilter !== 'pinned' && item.category !== currentFilter) return false;
+        if (currentFilter !== 'all' && currentFilter !== 'pinned' && normalizeCategory(item.category).toLowerCase() !== currentFilter.toLowerCase()) return false;
         
         // Search Filter
         if (currentSearch.trim()) {
@@ -751,22 +848,163 @@
       return filtered;
     }
 
+    function applyModeUI() {
+      const isPrompt = currentMode === 'prompt';
+      
+      // Update Tab Styles
+      if (modeTabPrompt && modeTabCommand) {
+        if (isPrompt) {
+          modeTabPrompt.className = 'mode-tab-btn flex-1 sm:flex-none px-6 py-2.5 rounded-2xl text-sm font-bold border transition-all flex items-center justify-center gap-2.5 shadow-lg bg-indigo-600 text-white border-indigo-500 shadow-indigo-500/25';
+          modeTabCommand.className = 'mode-tab-btn flex-1 sm:flex-none px-6 py-2.5 rounded-2xl text-sm font-bold border transition-all flex items-center justify-center gap-2.5 shadow-sm bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-800';
+        } else {
+          modeTabCommand.className = 'mode-tab-btn flex-1 sm:flex-none px-6 py-2.5 rounded-2xl text-sm font-bold border transition-all flex items-center justify-center gap-2.5 shadow-lg bg-indigo-600 text-white border-indigo-500 shadow-indigo-500/25';
+          modeTabPrompt.className = 'mode-tab-btn flex-1 sm:flex-none px-6 py-2.5 rounded-2xl text-sm font-bold border transition-all flex items-center justify-center gap-2.5 shadow-sm bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-800';
+        }
+      }
+
+      // Update Form Labels & Placeholders
+      const isEditing = !!editingIdStore.value;
+      if (!isEditing) {
+        formTitleHeading.innerHTML = isPrompt
+          ? `<span class="text-indigo-400">✨</span> 새 프롬프트 보관하기`
+          : `<span class="text-indigo-400">⚡</span> 새 명령어 보관하기`;
+        formSubmitBtn.innerHTML = isPrompt
+          ? `<span>+</span> 프롬프트 저장하기`
+          : `<span>+</span> 명령어 저장하기`;
+      } else {
+        formTitleHeading.innerHTML = isPrompt
+          ? `<span class="text-amber-400">✏️</span> 프롬프트 수정하기`
+          : `<span class="text-amber-400">✏️</span> 명령어 수정하기`;
+        formSubmitBtn.innerHTML = `<span>✓</span> 수정사항 저장`;
+      }
+
+      if (formTipText) {
+        formTipText.innerHTML = isPrompt
+          ? `Tip: <code class="text-indigo-300 font-bold">{{변수명}}</code>을 쓰면 템플릿으로 변환됩니다`
+          : `Tip: <code class="text-cyan-300 font-bold">{{옵션/인자}}</code>를 쓰면 동적 명령어로 변환됩니다`;
+      }
+
+      if (formLabelTitle) formLabelTitle.textContent = isPrompt ? '제목' : '명령어 이름 (설명)';
+      titleInput.placeholder = isPrompt ? '예: Python 코딩 스타일 및 보안 리팩터링' : '예: 도커 실시간 로그 확인 및 특정 컨테이너 상태 모니터링';
+
+      if (formLabelCategory) formLabelCategory.textContent = isPrompt ? '카테고리' : '환경 / 도구';
+      categoryInput.placeholder = isPrompt ? '개발, 기획, 업무...' : 'Docker, Git, Linux, Shell...';
+
+      if (formLabelContent) formLabelContent.textContent = isPrompt ? '프롬프트 지시문' : '실행 명령어 (CLI)';
+      contentInput.placeholder = isPrompt
+        ? '프롬프트 내용을 입력하세요... 예: 다음 {{언어}} 코드를 {{목적}} 기준에 맞게 리팩터링해줘.'
+        : '실행할 명령어를 입력하세요... 예: docker logs -f --tail={{줄수}} {{컨테이너ID}}';
+
+      // Dynamic Field Sizing & Terminal Styling per Mode
+      if (isPrompt) {
+        // Prompt Mode: Compact Title (1-line default), Spacious Content (4-lines default)
+        titleInput.rows = 1;
+        titleInput.style.minHeight = '42px';
+        titleInput.className = 'w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all resize-none';
+
+        contentInput.rows = 4;
+        contentInput.style.minHeight = '115px';
+        contentInput.className = 'w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-mono transition-all resize-none';
+      } else {
+        // Command Mode: Spacious Title/Description (2~3 lines default), Compact Terminal Command (1-line default)
+        titleInput.rows = 2;
+        titleInput.style.minHeight = '68px';
+        titleInput.className = 'w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-medium transition-all resize-none';
+
+        contentInput.rows = 1;
+        contentInput.style.minHeight = '44px';
+        contentInput.className = 'w-full bg-[#090D16] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-cyan-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-mono font-semibold transition-all resize-none';
+      }
+
+      autoResizeTextarea(titleInput);
+      autoResizeTextarea(contentInput);
+
+      // Update AI Evaluation Button & Modal Titles
+      if (evalToggleIcon && evalToggleText) {
+        evalToggleIcon.textContent = isPrompt ? '✨' : '⚡';
+        evalToggleText.textContent = isPrompt ? 'AI 평가 & 샌드박스' : 'AI 추천 & 샌드박스';
+      }
+      if (evalModalIcon && evalModalTitle && evalModalSubtitle) {
+        evalModalIcon.textContent = isPrompt ? '✨' : '⚡';
+        evalModalTitle.textContent = isPrompt ? 'AI 프롬프트 검토 샌드박스' : 'AI 명령어 추천 샌드박스';
+        evalModalSubtitle.textContent = isPrompt
+          ? '저장하기 전 프롬프트를 다듬고 바로 보관함에 저장하세요'
+          : '필요한 작업이나 명령어를 입력하면 최적의 CLI 명령어와 옵션을 추천합니다';
+      }
+      if (evalChatInput) {
+        evalChatInput.placeholder = isPrompt
+          ? '프롬프트를 평가받거나 다듬어달라고 요청해 보세요...'
+          : '예: 도커 실시간 로그 확인하는 명령어 알려줘, Git 최근 커밋 수정...';
+      }
+    }
+
+    function getCategoryBadgeHtml(category, isCommand) {
+      if (!category) return '';
+      if (!isCommand) {
+        return `<span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mb-2">${escapeHtml(category)}</span>`;
+      }
+      
+      const c = category.toLowerCase().trim();
+      let icon = '💻';
+      let badgeStyle = 'bg-slate-700/50 text-slate-200 border-slate-600/50';
+
+      if (c.includes('docker')) {
+        icon = '🐳';
+        badgeStyle = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30';
+      } else if (c.includes('git')) {
+        icon = '🐙';
+        badgeStyle = 'bg-orange-500/20 text-orange-300 border-orange-500/30';
+      } else if (c.includes('linux') || c.includes('bash') || c.includes('shell') || c.includes('sh')) {
+        icon = '⚡';
+        badgeStyle = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+      } else if (c.includes('power') || c.includes('ps') || c.includes('win')) {
+        icon = '🟦';
+        badgeStyle = 'bg-sky-500/20 text-sky-300 border-sky-500/30';
+      } else if (c.includes('node') || c.includes('npm') || c.includes('yarn') || c.includes('pnpm')) {
+        icon = '📦';
+        badgeStyle = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+      } else if (c.includes('sql') || c.includes('db') || c.includes('postgres') || c.includes('mysql') || c.includes('mongo')) {
+        icon = '🗄️';
+        badgeStyle = 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+      } else if (c.includes('python') || c.includes('pip')) {
+        icon = '🐍';
+        badgeStyle = 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+      }
+
+      return `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${badgeStyle} border mb-2 font-mono"><span>${icon}</span> ${escapeHtml(category)}</span>`;
+    }
+
+    function updateCategoryDatalist() {
+      const datalist = document.getElementById('category-datalist');
+      if (!datalist) return;
+      const categories = getCategories();
+      datalist.innerHTML = categories.map(cat => `<option value="${escapeHtml(cat)}"></option>`).join('');
+    }
+
     function render() {
       updateStats();
+      applyModeUI();
       renderFilters();
+      updateCategoryDatalist();
 
       const visiblePrompts = getFilteredAndSortedPrompts();
       listEl.innerHTML = '';
       emptyState.classList.toggle('hidden', visiblePrompts.length > 0);
 
       visiblePrompts.forEach(item => {
+        const isCommand = item.type === 'command';
         const vars = extractVariables(item.content);
         const card = document.createElement('div');
-        card.className = `slate-card rounded-2xl p-6 flex flex-col justify-between group ${item.isPinned ? 'border-amber-500/40 bg-slate-800/40' : ''}`;
 
-        const categoryBadge = item.category
-          ? `<span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mb-2">${escapeHtml(item.category)}</span>`
-          : '';
+        const cardBorderClass = item.isPinned
+          ? 'border-amber-500/50 bg-slate-800/40 shadow-amber-500/5'
+          : isCommand
+            ? 'border-slate-800 bg-slate-900/60 hover:border-cyan-500/40'
+            : 'border-slate-700/80 bg-slate-900/40 hover:border-indigo-500/40';
+
+        card.className = `slate-card rounded-2xl p-5 sm:p-6 flex flex-col justify-between group ${cardBorderClass}`;
+
+        const categoryBadge = getCategoryBadgeHtml(item.category, isCommand);
 
         const pinStarBtn = `
           <button
@@ -786,17 +1024,55 @@
           ? `<button
               type="button"
               data-id="${item.id}"
-              class="var-copy-trigger-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-cyan-600/30 hover:bg-cyan-600/40 text-cyan-300 border border-cyan-500/40 transition-all flex items-center gap-1.5"
+              class="var-copy-trigger-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-300 border border-cyan-500/40 transition-all flex items-center gap-1.5 shadow-sm"
             >
               ⚡ 변수 채워 복사
             </button>`
-          : `<button
-              type="button"
-              data-id="${item.id}"
-              class="copy-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 transition-all flex items-center gap-1.5"
-            >
-              📋 복사하기
-            </button>`;
+          : isCommand
+            ? `<button
+                type="button"
+                data-id="${item.id}"
+                class="copy-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-cyan-950/70 hover:bg-cyan-900/90 text-cyan-200 border border-cyan-700/60 transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                <span>⚡</span> 명령어 복사
+              </button>`
+            : `<button
+                type="button"
+                data-id="${item.id}"
+                class="copy-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-700 hover:bg-slate-600 text-white border border-slate-600 transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                📋 복사하기
+              </button>`;
+
+        const titleHtml = isCommand
+          ? `<h3 class="font-bold text-base text-white group-hover:text-cyan-300 transition-colors mb-3 flex items-center gap-2">
+               <span class="text-xs text-cyan-400/80 font-mono font-bold">$</span>
+               <span>${escapeHtml(item.title)}</span>
+             </h3>`
+          : `<h3 class="font-bold text-base text-white group-hover:text-indigo-300 transition-colors mb-3">
+               ${escapeHtml(item.title)}
+             </h3>`;
+
+        const contentBoxHtml = isCommand
+          ? `<div class="terminal-box rounded-xl overflow-hidden mb-4 transition-all shadow-inner">
+               <div class="flex items-center justify-between px-3 py-1.5 bg-slate-950 border-b border-slate-800/80 text-[10px] font-mono text-slate-400 select-none">
+                 <div class="flex items-center gap-1.5">
+                   <span class="w-2 h-2 rounded-full bg-rose-500/70 inline-block"></span>
+                   <span class="w-2 h-2 rounded-full bg-amber-500/70 inline-block"></span>
+                   <span class="w-2 h-2 rounded-full bg-emerald-500/70 inline-block"></span>
+                 </div>
+                 <span class="text-slate-500 font-bold uppercase tracking-wider text-[9px]">${escapeHtml(item.category || 'CLI')}</span>
+               </div>
+               <div class="p-3.5 text-xs font-mono text-slate-100 bg-[#090D16] leading-relaxed max-h-36 overflow-x-auto selection:bg-cyan-500 selection:text-black">
+                 <div class="flex items-start gap-2">
+                   <span class="text-emerald-400 font-bold select-none shrink-0">&gt;</span>
+                   <p class="whitespace-pre-wrap break-all text-slate-100">${escapeHtml(item.content)}</p>
+                 </div>
+               </div>
+             </div>`
+          : `<div class="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-4 text-xs font-mono text-slate-200 leading-relaxed max-h-32 overflow-hidden relative">
+               <p class="whitespace-pre-wrap break-words">${escapeHtml(item.content)}</p>
+             </div>`;
 
         card.innerHTML = `
           <div>
@@ -816,18 +1092,22 @@
                 >✕</button>
               </div>
             </div>
-            <h3 class="font-bold text-base text-white group-hover:text-indigo-300 transition-colors mb-3">
-              ${escapeHtml(item.title)}
-            </h3>
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-4 text-xs font-mono text-slate-200 leading-relaxed max-h-32 overflow-hidden relative">
-              <p class="whitespace-pre-wrap break-words">${escapeHtml(item.content)}</p>
-            </div>
+            ${titleHtml}
+            ${contentBoxHtml}
           </div>
-          <div class="flex items-center justify-between pt-3 border-t border-slate-700">
+          <div class="flex items-center justify-between pt-3 border-t border-slate-700/80">
             <span class="text-[11px] font-mono text-slate-400">
               ${new Date(item.updatedAt || item.createdAt).toLocaleDateString('ko-KR')}
             </span>
             <div class="flex items-center gap-1.5 flex-wrap justify-end">
+              <button
+                type="button"
+                data-id="${item.id}"
+                class="card-ai-eval-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold ${isCommand ? 'bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border-cyan-700/60' : 'bg-indigo-950/70 hover:bg-indigo-900 text-indigo-300 border-indigo-700/60'} border transition-all flex items-center gap-1 shadow-sm"
+                title="이 카드를 AI 샌드박스로 보내 검토/평가받습니다"
+              >
+                <span>✨</span> AI 평가
+              </button>
               <button
                 type="button"
                 data-id="${item.id}"
@@ -857,7 +1137,7 @@
       e.preventDefault();
       const title = titleInput.value.trim();
       const content = contentInput.value.trim();
-      const category = categoryInput.value.trim();
+      const category = normalizeCategory(categoryInput.value);
       const editingId = editingIdStore.value;
 
       if (!title || !content) return;
@@ -877,12 +1157,13 @@
           return p;
         });
         savePrompts(updated);
-        showToast('프롬프트가 수정되었습니다!');
+        showToast(currentMode === 'prompt' ? '프롬프트가 수정되었습니다!' : '명령어가 수정되었습니다!');
         resetForm();
       } else {
         // Create Mode
         const newPrompt = {
           id: Date.now(),
+          type: currentMode, // <-- Typed to active workspace mode!
           title,
           content,
           category,
@@ -892,29 +1173,49 @@
           updatedAt: new Date().toISOString()
         };
         savePrompts([newPrompt, ...prompts]);
-        showToast('새 프롬프트가 보관되었습니다!');
+        showToast(currentMode === 'prompt' ? '새 프롬프트가 보관되었습니다!' : '새 명령어가 보관되었습니다!');
         resetForm();
       }
     });
 
+    function autoResizeTextarea(el) {
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+
+    titleInput.addEventListener('input', () => autoResizeTextarea(titleInput));
+    contentInput.addEventListener('input', () => autoResizeTextarea(contentInput));
+
     function resetForm() {
       form.reset();
       editingIdStore.value = '';
-      formTitleHeading.innerHTML = `<span class="text-indigo-400">✨</span> 새 프롬프트 보관하기`;
-      formSubmitBtn.innerHTML = `<span>+</span> 프롬프트 저장하기`;
       formCancelBtn.classList.add('hidden');
+      titleInput.style.height = '';
+      contentInput.style.height = '';
+      applyModeUI();
     }
 
     formCancelBtn.addEventListener('click', resetForm);
 
-    // List Event Delegation (Pin, Delete, Edit, Copy, Variable Copy)
+    // List Event Delegation (Pin, Delete, Edit, Copy, Variable Copy, AI Eval)
     listEl.addEventListener('click', (e) => {
       const pinBtn = e.target.closest('.pin-btn');
       const deleteBtn = e.target.closest('.delete-btn');
       const editBtn = e.target.closest('.edit-btn');
+      const cardAiEvalBtn = e.target.closest('.card-ai-eval-btn');
       const shareBtn = e.target.closest('.share-btn');
       const copyBtn = e.target.closest('.copy-btn');
       const varCopyTriggerBtn = e.target.closest('.var-copy-trigger-btn');
+
+      if (cardAiEvalBtn) {
+        const id = cardAiEvalBtn.dataset.id;
+        const target = prompts.find(p => String(p.id) === String(id));
+        if (target) {
+          openEvalModalWithPrompt(target);
+        }
+        return;
+      }
 
       if (pinBtn) {
         const id = pinBtn.dataset.id;
@@ -926,7 +1227,7 @@
 
       if (deleteBtn) {
         const id = deleteBtn.dataset.id;
-        if (confirm('이 프롬프트를 보관함에서 삭제하시겠습니까?')) {
+        if (confirm('이 항목을 보관함에서 삭제하시겠습니까?')) {
           const updated = prompts.filter(p => String(p.id) !== String(id));
           savePrompts(updated);
           showToast('삭제되었습니다.', 'info');
@@ -943,9 +1244,13 @@
           categoryInput.value = target.category || '';
           editingIdStore.value = target.id;
 
-          formTitleHeading.innerHTML = `<span class="text-amber-400">✏️</span> 프롬프트 수정하기`;
+          formTitleHeading.innerHTML = target.type === 'command'
+            ? `<span class="text-amber-400">✏️</span> 명령어 수정하기`
+            : `<span class="text-amber-400">✏️</span> 프롬프트 수정하기`;
           formSubmitBtn.innerHTML = `<span>✓</span> 수정사항 저장`;
           formCancelBtn.classList.remove('hidden');
+          autoResizeTextarea(titleInput);
+          autoResizeTextarea(contentInput);
           document.getElementById('form-container').scrollIntoView({ behavior: 'smooth' });
         }
         return;
@@ -990,6 +1295,31 @@
         return;
       }
     });
+
+    // Workspace Mode Switcher Events
+    if (modeTabPrompt) {
+      modeTabPrompt.addEventListener('click', () => {
+        if (currentMode === 'prompt') return;
+        currentMode = 'prompt';
+        currentFilter = 'all';
+        currentSearch = '';
+        if (searchInput) searchInput.value = '';
+        resetForm();
+        render();
+      });
+    }
+
+    if (modeTabCommand) {
+      modeTabCommand.addEventListener('click', () => {
+        if (currentMode === 'command') return;
+        currentMode = 'command';
+        currentFilter = 'all';
+        currentSearch = '';
+        if (searchInput) searchInput.value = '';
+        resetForm();
+        render();
+      });
+    }
 
     // Category Filter Buttons Event
     filtersEl.addEventListener('click', (e) => {
@@ -1149,9 +1479,10 @@
 
           stagedImportData = rawList.map((item, idx) => ({
             id: item.id || (Date.now() + '-' + idx),
-            title: item.title || '무제 프롬프트',
+            type: item.type || 'prompt', // Type normalization on import!
+            title: item.title || '무제 항목',
             content: item.content || '',
-            category: item.category || '',
+            category: normalizeCategory(item.category || ''),
             isPinned: !!item.isPinned,
             useCount: item.useCount || 0,
             createdAt: item.createdAt || new Date().toISOString(),
@@ -1300,53 +1631,84 @@
     function extractPromptExample(fullText) {
       if (!fullText) return '';
       let exampleText = '';
-      const exampleHeaderRegex = /(?:✏️\s*예시|예시)\s*:?\s*\n?/i;
-      const match = fullText.match(exampleHeaderRegex);
 
-      if (match) {
-        const startIndex = match.index + match[0].length;
-        exampleText = fullText.slice(startIndex).trim();
+      // 1. Command Mode Template: ✅ 추천 명령어 (extract lines up to before 🔍 동작 설명, ⚠️ 위험도, or other label)
+      const cmdMatch = fullText.match(/(?:✅\s*추천\s*명령어|추천\s*명령어)\s*:?\s*\n([\s\S]*?)(?=\n\s*(?:🔍\s*동작\s*설명|⚠️\s*위험도|📝|💡|✏️|$))/i);
+      if (cmdMatch && cmdMatch[1].trim()) {
+        exampleText = cmdMatch[1].trim();
       } else {
-        const codeBlockMatch = fullText.match(/```(?:\w+)?\n([\s\S]*?)```/);
-        if (codeBlockMatch) {
-          exampleText = codeBlockMatch[1].trim();
+        // 2. Prompt Mode Template: ✏️ 예시 (extract up to next label or EOF)
+        const promptMatch = fullText.match(/(?:✏️\s*예시|예시)\s*:?\s*\n([\s\S]*?)(?=\n\s*(?:📝|💡|✏️|✅|🔍|⚠️|$))/i);
+        if (promptMatch && promptMatch[1].trim()) {
+          exampleText = promptMatch[1].trim();
         } else {
-          exampleText = fullText.trim();
+          // 3. Fallback: Code block in markdown
+          const codeBlockMatch = fullText.match(/```(?:\w+)?\n([\s\S]*?)```/);
+          if (codeBlockMatch && codeBlockMatch[1].trim()) {
+            exampleText = codeBlockMatch[1].trim();
+          } else {
+            exampleText = fullText.trim();
+          }
         }
       }
+
+      // If wrapped in markdown code fence, strip fence
+      const innerCodeFence = exampleText.match(/^```(?:\w+)?\n([\s\S]*?)\n?```$/);
+      if (innerCodeFence) {
+        exampleText = innerCodeFence[1].trim();
+      }
+
       return exampleText.replace(/^["'“`]+|["'”`]+$/g, '').trim() || fullText;
     }
 
     function addSaveToArchiveBtn(container, assistantText) {
+      const isCommand = currentMode === 'command';
       const btnWrapper = document.createElement('div');
       btnWrapper.className = 'mt-2 flex justify-start';
       btnWrapper.innerHTML = `
         <button
           type="button"
-          class="save-from-ai-btn bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5"
+          class="save-from-ai-btn ${isCommand ? 'bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-200 border-cyan-500/40' : 'bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border-indigo-500/40'} border text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
         >
-          <span>📥</span> 예시 프롬프트만 보관함에 저장하기
+          <span>📥</span> ${isCommand ? '추천 명령어 보관함에 저장하기' : '예시 프롬프트만 보관함에 저장하기'}
         </button>
       `;
 
       btnWrapper.querySelector('.save-from-ai-btn').addEventListener('click', () => {
         const extractedPrompt = extractPromptExample(assistantText);
-        titleInput.value = 'AI 검토 개선 프롬프트';
-        contentInput.value = extractedPrompt;
+        if (isCommand) {
+          titleInput.value = 'AI 추천 명령어';
+          contentInput.value = extractedPrompt;
+          
+          const lower = extractedPrompt.toLowerCase();
+          if (lower.includes('docker')) categoryInput.value = 'Docker';
+          else if (lower.includes('git')) categoryInput.value = 'Git';
+          else if (lower.includes('npm') || lower.includes('node') || lower.includes('yarn') || lower.includes('pnpm')) categoryInput.value = 'Npm';
+          else if (lower.includes('kubectl') || lower.includes('k8s')) categoryInput.value = 'Kubernetes';
+          else if (lower.includes('ps') || lower.includes('powershell')) categoryInput.value = 'Powershell';
+          else if (lower.includes('linux')) categoryInput.value = 'Linux';
+          else if (!categoryInput.value) categoryInput.value = 'Cli';
+
+          showToast('AI 추천 명령어가 등록 폼에 입력되었습니다! 📥');
+        } else {
+          titleInput.value = 'AI 검토 개선 프롬프트';
+          contentInput.value = extractedPrompt;
+          if (!categoryInput.value) categoryInput.value = '개발';
+          showToast('AI 예시 프롬프트가 등록 폼에 입력되었습니다! 📥');
+        }
         
         closeEvalModal();
+        autoResizeTextarea(titleInput);
+        autoResizeTextarea(contentInput);
         document.getElementById('form-container').scrollIntoView({ behavior: 'smooth' });
         contentInput.focus();
-        showToast('AI 예시 프롬프트만 보관함 등록 폼에 입력되었습니다! 📥');
       });
 
       container.appendChild(btnWrapper);
       evalChatMessages.scrollTop = evalChatMessages.scrollHeight;
     }
 
-    evalChatForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const text = evalChatInput.value.trim();
+    async function submitEvalQuery(text) {
       if (!text) return;
 
       evalChatInput.value = '';
@@ -1365,7 +1727,7 @@
         const response = await fetch(EVALUATE_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: text }),
+          body: JSON.stringify({ prompt: text, mode: currentMode }),
         });
 
         if (!response.ok || !response.body) {
@@ -1409,6 +1771,21 @@
         evalChatSendBtn.disabled = false;
         evalChatInput.focus();
       }
+    }
+
+    function openEvalModalWithPrompt(target) {
+      evalModalOverlay.classList.remove('hidden');
+      const isCmd = target.type === 'command';
+      const promptQuery = isCmd
+        ? `이 명령어의 목적은 '${target.title}'입니다. 아래 명령어를 검증해주세요:\n\n${target.content}`
+        : `이 프롬프트의 목적은 '${target.title}'입니다. 아래 프롬프트를 검토해주세요:\n\n${target.content}`;
+      submitEvalQuery(promptQuery);
+    }
+
+    evalChatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = evalChatInput.value.trim();
+      if (text) submitEvalQuery(text);
     });
 
     // Initial Load Render

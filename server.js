@@ -11,9 +11,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const MODELS_PATH = path.join(__dirname, 'config', 'models.json');
 const SYSTEM_PROMPT_PATH = path.join(__dirname, 'config', 'systemPrompt.txt');
+const COMMAND_SYSTEM_PROMPT_PATH = path.join(__dirname, 'config', 'commandSystemPrompt.txt');
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const IDLE_TIMEOUT_MS = 15000; // 최초 연결 또는 청크 사이 최대 대기 시간
-const MAX_TOKENS = 300;
 
 app.use(cors());
 app.use(express.json());
@@ -47,12 +47,31 @@ function loadModels() {
   return models;
 }
 
-function loadSystemPrompt() {
-  const raw = fs.readFileSync(SYSTEM_PROMPT_PATH, 'utf-8').trim();
+function loadSystemPrompt(mode = 'prompt') {
+  const targetPath = mode === 'command' ? COMMAND_SYSTEM_PROMPT_PATH : SYSTEM_PROMPT_PATH;
+  if (!fs.existsSync(targetPath)) {
+    return fs.readFileSync(SYSTEM_PROMPT_PATH, 'utf-8').trim();
+  }
+  const raw = fs.readFileSync(targetPath, 'utf-8').trim();
   if (!raw) {
-    throw new Error('config/systemPrompt.txt가 비어 있습니다.');
+    throw new Error(`${targetPath}가 비어 있습니다.`);
   }
   return raw;
+}
+
+const LOGS_DIR = path.join(__dirname, 'logs');
+const USAGE_LOG_PATH = path.join(LOGS_DIR, 'eval-usage.log');
+
+async function appendUsageLog(logData) {
+  try {
+    if (!fs.existsSync(LOGS_DIR)) {
+      fs.mkdirSync(LOGS_DIR, { recursive: true });
+    }
+    const logLine = JSON.stringify(logData) + '\n';
+    await fs.promises.appendFile(USAGE_LOG_PATH, logLine, 'utf8');
+  } catch (err) {
+    console.error('토큰 사용량 로그 기록 실패:', err.message);
+  }
 }
 
 /**
@@ -60,7 +79,7 @@ function loadSystemPrompt() {
  * 첫 콘텐츠 청크를 받기 전에 실패하면 err.stage = 'pre' (다음 순위로 폴백 가능),
  * 이미 청크를 하나라도 보낸 뒤 실패하면 err.stage = 'mid' (폴백 불가, 사용자에게 에러 안내).
  */
-async function streamOpenRouter(model, systemPrompt, prompt, controller, onChunk) {
+async function streamOpenRouter(model, systemPrompt, prompt, maxTokens, controller, onChunk) {
   let idleTimer;
   const resetIdleTimer = () => {
     clearTimeout(idleTimer);
@@ -79,8 +98,9 @@ async function streamOpenRouter(model, systemPrompt, prompt, controller, onChunk
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        max_tokens: MAX_TOKENS,
+        max_tokens: maxTokens,
         stream: true,
+        stream_options: { include_usage: true },
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
@@ -105,6 +125,8 @@ async function streamOpenRouter(model, systemPrompt, prompt, controller, onChunk
   const decoder = new StringDecoder('utf8');
   let buffer = '';
   let receivedAnyContent = false;
+  let finishReason = null;
+  let usage = null;
 
   try {
     for await (const chunk of response.body) {
@@ -121,7 +143,7 @@ async function streamOpenRouter(model, systemPrompt, prompt, controller, onChunk
         const payload = trimmed.slice(5).trim();
         if (payload === '[DONE]') {
           clearTimeout(idleTimer);
-          return { receivedAnyContent };
+          return { receivedAnyContent, finishReason, usage };
         }
 
         try {
@@ -130,6 +152,13 @@ async function streamOpenRouter(model, systemPrompt, prompt, controller, onChunk
           if (delta) {
             receivedAnyContent = true;
             onChunk(delta);
+          }
+          const choiceFinishReason = json?.choices?.[0]?.finish_reason;
+          if (choiceFinishReason) {
+            finishReason = choiceFinishReason;
+          }
+          if (json?.usage) {
+            usage = json.usage;
           }
         } catch {
           // 조각난 JSON 라인은 복구 불가하므로 무시
@@ -144,20 +173,23 @@ async function streamOpenRouter(model, systemPrompt, prompt, controller, onChunk
   }
 
   clearTimeout(idleTimer);
-  return { receivedAnyContent };
+  return { receivedAnyContent, finishReason, usage };
 }
 
 app.post('/api/evaluate', async (req, res) => {
-  const { prompt } = req.body || {};
+  const { prompt, mode } = req.body || {};
   if (!prompt || typeof prompt !== 'string') {
     return res.status(400).json({ error: true, message: 'prompt 값이 필요합니다.' });
   }
+
+  const safeMode = mode === 'command' ? 'command' : 'prompt';
+  const maxTokens = safeMode === 'command' ? 480 : 400;
 
   let models;
   let systemPrompt;
   try {
     models = loadModels();
-    systemPrompt = loadSystemPrompt();
+    systemPrompt = loadSystemPrompt(safeMode);
   } catch (err) {
     console.error('설정 파일을 불러오지 못했습니다:', err.message);
     return res.status(500).json({
@@ -195,13 +227,13 @@ app.post('/api/evaluate', async (req, res) => {
 
     const model = models[i];
     const rank = i + 1;
-    console.log(`${rank}순위 모델(${model}) 시도 중...`);
+    console.log(`${rank}순위 모델(${model}) 시도 중... (mode: ${safeMode}, max_tokens: ${maxTokens})`);
 
     const controller = new AbortController();
     activeController = controller;
 
     try {
-      await streamOpenRouter(model, systemPrompt, prompt, controller, (delta) => {
+      const result = await streamOpenRouter(model, systemPrompt, prompt, maxTokens, controller, (delta) => {
         sendEvent('chunk', { text: delta });
       });
       console.log(`${rank}순위 모델(${model}) 성공`);
@@ -210,8 +242,35 @@ app.post('/api/evaluate', async (req, res) => {
         sendEvent('done', { model });
         res.end();
       }
+
+      // Log successful model attempt
+      const finishReason = result?.finishReason ?? 'stop';
+      const usage = result?.usage;
+      appendUsageLog({
+        timestamp: new Date().toISOString(),
+        mode: safeMode,
+        model,
+        finish_reason: finishReason,
+        promptTokens: usage?.prompt_tokens ?? null,
+        completionTokens: usage?.completion_tokens ?? null,
+        totalTokens: usage?.total_tokens ?? null,
+        truncated: finishReason === 'length',
+      });
+
       return;
     } catch (err) {
+      // Log failed / failover model attempt
+      appendUsageLog({
+        timestamp: new Date().toISOString(),
+        mode: safeMode,
+        model,
+        finish_reason: 'error',
+        promptTokens: null,
+        completionTokens: null,
+        totalTokens: null,
+        truncated: false,
+      });
+
       if (err.stage === 'mid') {
         console.error(`${rank}순위(${model}) 스트리밍 도중 오류: ${err.message}`);
         activeController = null;

@@ -1,7 +1,9 @@
 @echo off
 setlocal
 
-cd /d "%~dp0"
+set "APP_DIR=%~dp0"
+if "%APP_DIR:~-1%"=="\" set "APP_DIR=%APP_DIR:~0,-1%"
+cd /d "%APP_DIR%"
 
 where node >nul 2>nul
 if errorlevel 1 goto nonode
@@ -13,12 +15,11 @@ for /f "usebackq tokens=1,2 delims==" %%A in (".env") do if /i "%%A"=="PORT" set
 :checkport
 set "URL=http://localhost:%PORT%"
 
-echo Checking port %PORT% ...
-netstat -ano | findstr /r /c:":%PORT% .*LISTENING" >nul
-if %errorlevel%==0 goto alreadyrunning
+echo [1/3] Checking and cleaning port %PORT% ...
+node -e "try{const p='%PORT%';require('child_process').execSync('netstat -ano').toString().split('\n').filter(l=>l.includes(':'+p)&&l.includes('LISTENING')).forEach(l=>{const id=l.trim().split(/\s+/).pop();if(id&&id!=='0')try{require('child_process').execSync('taskkill /F /PID '+id)}catch(e){}})}catch(e){}" >nul 2>nul
 
-echo Starting server in the background...
-powershell -NoProfile -Command "Start-Process -FilePath 'node' -ArgumentList 'server.js' -WorkingDirectory '%~dp0' -WindowStyle Hidden"
+echo [2/3] Starting server in the background...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath 'node' -ArgumentList 'server.js' -WorkingDirectory '%APP_DIR%' -WindowStyle Hidden"
 
 set count=0
 :waitloop
@@ -26,16 +27,12 @@ ping -n 2 127.0.0.1 >nul
 netstat -ano | findstr /r /c:":%PORT% .*LISTENING" >nul
 if %errorlevel%==0 goto openbrowser
 set /a count+=1
-if %count% lss 15 goto waitloop
-echo [WARN] Could not confirm the server is up yet. Opening the browser anyway.
-goto openbrowser
-
-:alreadyrunning
-echo Server is already running. Opening the browser only.
-goto openbrowser
+if %count% lss 10 goto waitloop
 
 :openbrowser
+echo [3/3] Opening browser at %URL% ...
 start "" "%URL%"
+
 goto end
 
 :nonode
