@@ -249,6 +249,7 @@ app.post('/api/evaluate', async (req, res) => {
       appendUsageLog({
         timestamp: new Date().toISOString(),
         mode: safeMode,
+        rank,
         model,
         finish_reason: finishReason,
         promptTokens: usage?.prompt_tokens ?? null,
@@ -263,6 +264,7 @@ app.post('/api/evaluate', async (req, res) => {
       appendUsageLog({
         timestamp: new Date().toISOString(),
         mode: safeMode,
+        rank,
         model,
         finish_reason: 'error',
         promptTokens: null,

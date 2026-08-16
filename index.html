@@ -203,36 +203,35 @@
         </span>
       </div>
 
-      <form id="prompt-form" autocomplete="off" class="space-y-4">
+      <form id="prompt-form" autocomplete="off" class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <input type="hidden" id="editing-id-store" value="">
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="md:col-span-2">
-            <label id="form-label-title" for="prompt-title" class="block text-xs font-bold text-slate-300 mb-1.5">제목</label>
-            <textarea
-              id="prompt-title"
-              rows="1"
-              autocomplete="off"
-              placeholder="예: Python 코딩 스타일 및 보안 리팩터링"
-              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all resize-none"
-              required
-            ></textarea>
-          </div>
-          <div>
-            <label id="form-label-category" for="prompt-category" class="block text-xs font-bold text-slate-300 mb-1.5">카테고리</label>
-            <input
-              id="prompt-category"
-              type="text"
-              autocomplete="off"
-              list="category-datalist"
-              placeholder="개발, 기획, 업무..."
-              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all"
-            >
-            <datalist id="category-datalist"></datalist>
-          </div>
+        <div id="form-field-title" class="md:col-span-2">
+          <label id="form-label-title" for="prompt-title" class="block text-xs font-bold text-slate-300 mb-1.5">제목</label>
+          <textarea
+            id="prompt-title"
+            rows="1"
+            autocomplete="off"
+            placeholder="예: Python 코딩 스타일 및 보안 리팩터링"
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all resize-none"
+            required
+          ></textarea>
         </div>
 
-        <div>
+        <div id="form-field-category" class="md:col-span-1">
+          <label id="form-label-category" for="prompt-category" class="block text-xs font-bold text-slate-300 mb-1.5">카테고리</label>
+          <input
+            id="prompt-category"
+            type="text"
+            autocomplete="off"
+            list="category-datalist"
+            placeholder="개발, 기획, 업무..."
+            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all"
+          >
+          <datalist id="category-datalist"></datalist>
+        </div>
+
+        <div id="form-field-content" class="md:col-span-3">
           <label id="form-label-content" for="prompt-content" class="block text-xs font-bold text-slate-300 mb-1.5">프롬프트 지시문</label>
           <textarea
             id="prompt-content"
@@ -243,7 +242,7 @@
           ></textarea>
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-1">
+        <div id="form-field-actions" class="md:col-span-3 flex items-center justify-end gap-3 pt-1">
           <button
             id="form-cancel-btn"
             type="button"
@@ -563,6 +562,10 @@
     const formTitleHeading = document.getElementById('form-title-heading');
     const formSubmitBtn = document.getElementById('form-submit-btn');
     const formCancelBtn = document.getElementById('form-cancel-btn');
+    const formFieldTitle = document.getElementById('form-field-title');
+    const formFieldCategory = document.getElementById('form-field-category');
+    const formFieldContent = document.getElementById('form-field-content');
+    const formFieldActions = document.getElementById('form-field-actions');
 
     const filtersEl = document.getElementById('category-filters');
     const sortSelect = document.getElementById('sort-select');
@@ -884,20 +887,40 @@
           : `Tip: <code class="text-cyan-300 font-bold">{{옵션/인자}}</code>를 쓰면 동적 명령어로 변환됩니다`;
       }
 
-      if (formLabelTitle) formLabelTitle.textContent = isPrompt ? '제목' : '명령어 이름 (설명)';
-      titleInput.placeholder = isPrompt ? '예: Python 코딩 스타일 및 보안 리팩터링' : '예: 도커 실시간 로그 확인 및 특정 컨테이너 상태 모니터링';
+      if (formLabelTitle) formLabelTitle.textContent = isPrompt ? '제목' : '이 명령어로 뭘 하나요?';
+      titleInput.placeholder = isPrompt ? '예: Python 코딩 스타일 및 보안 리팩터링' : '예: {{커밋 메시지}}와 함께 변경사항 저장';
 
       if (formLabelCategory) formLabelCategory.textContent = isPrompt ? '카테고리' : '환경 / 도구';
-      categoryInput.placeholder = isPrompt ? '개발, 기획, 업무...' : 'Docker, Git, Linux, Shell...';
+      categoryInput.placeholder = isPrompt ? '개발, 기획, 업무...' : 'Git, Linux, Shell...';
 
-      if (formLabelContent) formLabelContent.textContent = isPrompt ? '프롬프트 지시문' : '실행 명령어 (CLI)';
+      if (formLabelContent) formLabelContent.textContent = isPrompt ? '프롬프트 지시문' : '명령어';
       contentInput.placeholder = isPrompt
         ? '프롬프트 내용을 입력하세요... 예: 다음 {{언어}} 코드를 {{목적}} 기준에 맞게 리팩터링해줘.'
-        : '실행할 명령어를 입력하세요... 예: docker logs -f --tail={{줄수}} {{컨테이너ID}}';
+        : '명령어를 입력하세요... 예: git commit -m "{{커밋 메시지}}"';
 
-      // Dynamic Field Sizing & Terminal Styling per Mode
+      // Dynamic Field Sizing, Grid Spanning & Physical DOM Ordering per Mode
       if (isPrompt) {
-        // Prompt Mode: Compact Title (1-line default), Spacious Content (4-lines default)
+        // Prompt Mode:
+        // Top Row: Title (2/3 width) + Category (1/3 width)
+        // Bottom Row: Prompt Content (Full width)
+        if (formFieldTitle && formFieldCategory && formFieldContent && formFieldActions) {
+          formFieldTitle.className = 'md:col-span-2';
+          formFieldCategory.className = 'md:col-span-1';
+          formFieldContent.className = 'md:col-span-3';
+          formFieldActions.className = 'md:col-span-3 flex items-center justify-end gap-3 pt-1';
+
+          // Clear CSS order and enforce physical DOM hierarchy: Title -> Category -> Content -> Actions
+          formFieldTitle.style.order = '';
+          formFieldCategory.style.order = '';
+          formFieldContent.style.order = '';
+          formFieldActions.style.order = '';
+
+          form.appendChild(formFieldTitle);
+          form.appendChild(formFieldCategory);
+          form.appendChild(formFieldContent);
+          form.appendChild(formFieldActions);
+        }
+
         titleInput.rows = 1;
         titleInput.style.minHeight = '42px';
         titleInput.className = 'w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-medium transition-all resize-none';
@@ -906,14 +929,34 @@
         contentInput.style.minHeight = '115px';
         contentInput.className = 'w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-mono transition-all resize-none';
       } else {
-        // Command Mode: Spacious Title/Description (2~3 lines default), Compact Terminal Command (1-line default)
-        titleInput.rows = 2;
-        titleInput.style.minHeight = '68px';
-        titleInput.className = 'w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-medium transition-all resize-none';
+        // Command Mode:
+        // Top Row: Executable Command (2/3 width) + Environment/Tool (1/3 width, unchanged slot)
+        // Bottom Row: Command Name/Description (Full width)
+        if (formFieldTitle && formFieldCategory && formFieldContent && formFieldActions) {
+          formFieldContent.className = 'md:col-span-2';
+          formFieldCategory.className = 'md:col-span-1';
+          formFieldTitle.className = 'md:col-span-3';
+          formFieldActions.className = 'md:col-span-3 flex items-center justify-end gap-3 pt-1';
+
+          // Clear CSS order and enforce physical DOM hierarchy: Content -> Category -> Title -> Actions
+          formFieldTitle.style.order = '';
+          formFieldCategory.style.order = '';
+          formFieldContent.style.order = '';
+          formFieldActions.style.order = '';
+
+          form.appendChild(formFieldContent);
+          form.appendChild(formFieldCategory);
+          form.appendChild(formFieldTitle);
+          form.appendChild(formFieldActions);
+        }
 
         contentInput.rows = 1;
-        contentInput.style.minHeight = '44px';
+        contentInput.style.minHeight = '42px';
         contentInput.className = 'w-full bg-[#090D16] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-cyan-300 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-mono font-semibold transition-all resize-none';
+
+        titleInput.rows = 4;
+        titleInput.style.minHeight = '115px';
+        titleInput.className = 'w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 font-medium transition-all resize-none';
       }
 
       autoResizeTextarea(titleInput);
@@ -934,7 +977,7 @@
       if (evalChatInput) {
         evalChatInput.placeholder = isPrompt
           ? '프롬프트를 평가받거나 다듬어달라고 요청해 보세요...'
-          : '예: 도커 실시간 로그 확인하는 명령어 알려줘, Git 최근 커밋 수정...';
+          : '예: 커밋 메시지 남기면서 저장하는 명령어 알려줘, 방금 커밋한 내용 확인하고 싶어...';
       }
     }
 
@@ -1045,9 +1088,8 @@
               </button>`;
 
         const titleHtml = isCommand
-          ? `<h3 class="font-bold text-base text-white group-hover:text-cyan-300 transition-colors mb-3 flex items-center gap-2">
-               <span class="text-xs text-cyan-400/80 font-mono font-bold">$</span>
-               <span>${escapeHtml(item.title)}</span>
+          ? `<h3 class="font-bold text-base text-white group-hover:text-cyan-300 transition-colors mb-3">
+               ${escapeHtml(item.title)}
              </h3>`
           : `<h3 class="font-bold text-base text-white group-hover:text-indigo-300 transition-colors mb-3">
                ${escapeHtml(item.title)}
@@ -1092,8 +1134,7 @@
                 >✕</button>
               </div>
             </div>
-            ${titleHtml}
-            ${contentBoxHtml}
+            ${isCommand ? `${contentBoxHtml}${titleHtml}` : `${titleHtml}${contentBoxHtml}`}
           </div>
           <div class="flex items-center justify-between pt-3 border-t border-slate-700/80">
             <span class="text-[11px] font-mono text-slate-400">

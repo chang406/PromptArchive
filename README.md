@@ -89,3 +89,11 @@ PORT=3000
 - **프롬프트 보관함용**: `config/systemPrompt.txt` (기본 Max Tokens: 400)
 - **명령어 보관함용**: `config/commandSystemPrompt.txt` (기본 Max Tokens: 480)
 - 각 텍스트 파일을 수정하여 AI의 평가 톤앤매너나 응답 양식을 원하는 대로 자유롭게 커스텀할 수 있습니다.
+
+### 3. 모델 호출 및 토큰 사용량 로그 (`logs/eval-usage.log`)
+- 모든 AI 호출 시도마다 모델 순위(`rank`), 성공/실패 여부(`finish_reason`), 토큰 사용량이 1줄 JSON(JSON Lines)으로 자동 기록됩니다.
+```json
+{"timestamp":"2026-08-16T12:00:00.000Z","mode":"command","rank":1,"model":"google/gemma-4-31b-it:free","finish_reason":"error","promptTokens":null,"completionTokens":null,"totalTokens":null,"truncated":false}
+{"timestamp":"2026-08-16T12:00:03.000Z","mode":"command","rank":2,"model":"google/gemma-4-26b-a4b-it:free","finish_reason":"stop","promptTokens":349,"completionTokens":110,"totalTokens":459,"truncated":false}
+```
+- 사용자의 프롬프트 원문은 절대 저장되지 않으며 메타데이터만 안전하게 기록됩니다.
