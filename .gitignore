@@ -1,4 +1,9 @@
 .env
-node_modules
-.claude/settings.local.json
+.env.local
+.env.*.local
+node_modules/
+.claude/
 logs/
+.DS_Store
+Thumbs.db
+
