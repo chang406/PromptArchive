@@ -100,6 +100,7 @@ async function streamOpenRouter(model, systemPrompt, prompt, maxTokens, controll
         model,
         max_tokens: maxTokens,
         stream: true,
+        include_reasoning: false,
         stream_options: { include_usage: true },
         messages: [
           { role: 'system', content: systemPrompt },
@@ -128,6 +129,32 @@ async function streamOpenRouter(model, systemPrompt, prompt, maxTokens, controll
   let finishReason = null;
   let usage = null;
 
+  // 스트림 필터링: 모델이 라벨 앞에 영문 CoT/독백을 출력하더라도 감지 시점부터만 클라이언트에 전송
+  let labelFound = false;
+  let preBuffer = '';
+
+  const forwardChunk = (text) => {
+    if (!text) return;
+    if (labelFound) {
+      onChunk(text);
+      return;
+    }
+
+    preBuffer += text;
+    // <think>...</think> 제거
+    preBuffer = preBuffer.replace(/<think>[\s\S]*?<\/think>/gi, '');
+
+    // 라벨 감지 (📝 총평 또는 ✅ 추천 명령어 또는 총평/추천 명령어 단독 라인)
+    const labelMatch = preBuffer.match(/(?:📝\s*총평|✅\s*추천\s*명령어|(?:^|\n)\s*(?:총평|추천\s*명령어)\s*:?)/);
+    if (labelMatch) {
+      labelFound = true;
+      const startIdx = labelMatch.index;
+      const cleanStart = preBuffer.slice(startIdx);
+      preBuffer = '';
+      onChunk(cleanStart);
+    }
+  };
+
   try {
     for await (const chunk of response.body) {
       resetIdleTimer();
@@ -137,12 +164,14 @@ async function streamOpenRouter(model, systemPrompt, prompt, maxTokens, controll
 
       for (const line of lines) {
         const trimmed = line.trim();
-        // OpenRouter는 연결 유지를 위해 ":" 로 시작하는 주석 라인을 보내기도 함
         if (!trimmed || trimmed.startsWith(':') || !trimmed.startsWith('data:')) continue;
 
         const payload = trimmed.slice(5).trim();
         if (payload === '[DONE]') {
           clearTimeout(idleTimer);
+          if (!labelFound && preBuffer.trim()) {
+            onChunk(preBuffer.trim());
+          }
           return { receivedAnyContent, finishReason, usage };
         }
 
@@ -151,7 +180,7 @@ async function streamOpenRouter(model, systemPrompt, prompt, maxTokens, controll
           const delta = json?.choices?.[0]?.delta?.content;
           if (delta) {
             receivedAnyContent = true;
-            onChunk(delta);
+            forwardChunk(delta);
           }
           const choiceFinishReason = json?.choices?.[0]?.finish_reason;
           if (choiceFinishReason) {
@@ -161,7 +190,7 @@ async function streamOpenRouter(model, systemPrompt, prompt, maxTokens, controll
             usage = json.usage;
           }
         } catch {
-          // 조각난 JSON 라인은 복구 불가하므로 무시
+          // 조각난 JSON 라인은 무시
         }
       }
     }
@@ -173,6 +202,9 @@ async function streamOpenRouter(model, systemPrompt, prompt, maxTokens, controll
   }
 
   clearTimeout(idleTimer);
+  if (!labelFound && preBuffer.trim()) {
+    onChunk(preBuffer.trim());
+  }
   return { receivedAnyContent, finishReason, usage };
 }
 
@@ -183,7 +215,7 @@ app.post('/api/evaluate', async (req, res) => {
   }
 
   const safeMode = mode === 'command' ? 'command' : 'prompt';
-  const maxTokens = safeMode === 'command' ? 480 : 400;
+  const maxTokens = 800;
 
   let models;
   let systemPrompt;

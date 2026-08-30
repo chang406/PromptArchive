@@ -1669,26 +1669,46 @@
       }
     }
 
+    function sanitizeAiOutput(rawText) {
+      if (!rawText) return '';
+      let clean = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+      // 라벨 앞의 CoT/영문 독백 제거: 📝 총평 또는 ✅ 추천 명령어 이전 텍스트 제거
+      const promptLabelIdx = clean.search(/(?:📝\s*총평|총평\s*:?)/);
+      const cmdLabelIdx = clean.search(/(?:✅\s*추천\s*명령어|추천\s*명령어\s*:?)/);
+
+      if (promptLabelIdx > 0 && (cmdLabelIdx === -1 || promptLabelIdx < cmdLabelIdx)) {
+        clean = clean.slice(promptLabelIdx).trim();
+      } else if (cmdLabelIdx > 0 && (promptLabelIdx === -1 || cmdLabelIdx < promptLabelIdx)) {
+        clean = clean.slice(cmdLabelIdx).trim();
+      }
+
+      // 말미의 'Make sure ...' 등 불필요한 검증 텍스트 제거
+      clean = clean.replace(/\n\s*Make sure[\s\S]*$/i, '').trim();
+      return clean;
+    }
+
     function extractPromptExample(fullText) {
-      if (!fullText) return '';
+      const sanitized = sanitizeAiOutput(fullText);
+      if (!sanitized) return '';
       let exampleText = '';
 
       // 1. Command Mode Template: ✅ 추천 명령어 (extract lines up to before 🔍 동작 설명, ⚠️ 위험도, or other label)
-      const cmdMatch = fullText.match(/(?:✅\s*추천\s*명령어|추천\s*명령어)\s*:?\s*\n([\s\S]*?)(?=\n\s*(?:🔍\s*동작\s*설명|⚠️\s*위험도|📝|💡|✏️|$))/i);
+      const cmdMatch = sanitized.match(/(?:✅\s*추천\s*명령어|추천\s*명령어)\s*:?\s*\n([\s\S]*?)(?=\n\s*(?:🔍\s*동작\s*설명|⚠️\s*위험도|📝|💡|✏️|$))/i);
       if (cmdMatch && cmdMatch[1].trim()) {
         exampleText = cmdMatch[1].trim();
       } else {
         // 2. Prompt Mode Template: ✏️ 예시 (extract up to next label or EOF)
-        const promptMatch = fullText.match(/(?:✏️\s*예시|예시)\s*:?\s*\n([\s\S]*?)(?=\n\s*(?:📝|💡|✏️|✅|🔍|⚠️|$))/i);
+        const promptMatch = sanitized.match(/(?:✏️\s*예시|예시)\s*:?\s*\n([\s\S]*?)(?=\n\s*(?:📝|💡|✏️|✅|🔍|⚠️|$))/i);
         if (promptMatch && promptMatch[1].trim()) {
           exampleText = promptMatch[1].trim();
         } else {
           // 3. Fallback: Code block in markdown
-          const codeBlockMatch = fullText.match(/```(?:\w+)?\n([\s\S]*?)```/);
+          const codeBlockMatch = sanitized.match(/```(?:\w+)?\n([\s\S]*?)```/);
           if (codeBlockMatch && codeBlockMatch[1].trim()) {
             exampleText = codeBlockMatch[1].trim();
           } else {
-            exampleText = fullText.trim();
+            exampleText = sanitized.trim();
           }
         }
       }
@@ -1699,7 +1719,7 @@
         exampleText = innerCodeFence[1].trim();
       }
 
-      return exampleText.replace(/^["'“`]+|["'”`]+$/g, '').trim() || fullText;
+      return exampleText.replace(/^["'“`]+|["'”`]+$/g, '').trim() || sanitized;
     }
 
     function addSaveToArchiveBtn(container, assistantText) {
@@ -1800,7 +1820,9 @@
               bubble.textContent = accumulated;
               evalChatMessages.scrollTop = evalChatMessages.scrollHeight;
             } else if (parsed.event === 'done') {
-              addSaveToArchiveBtn(container, accumulated);
+              const cleanedText = sanitizeAiOutput(accumulated);
+              bubble.textContent = cleanedText;
+              addSaveToArchiveBtn(container, cleanedText);
             }
           }
         }

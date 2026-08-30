@@ -4,7 +4,39 @@
 
 ---
 
-## 🎛️ 듀얼 워크스페이스 핵심 기능
+## 📸 미리보기 (Preview)
+
+### 1️⃣ 프롬프트 보관함 (Prompt Mode)
+> 자주 쓰는 LLM 프롬프트를 직관적인 카드 UI로 관리하고, 동적 변수(`{{변수}}`)를 활용해 원클릭으로 채워 복사합니다.
+
+<p align="center">
+  <img src="docs/assets/01_prompt_workspace.png" alt="프롬프트 보관함 메인 화면" width="100%">
+</p>
+
+### 2️⃣ AI 프롬프트 검토 샌드박스 (Prompt Sandbox)
+> 저장하기 전 프롬프트의 품질을 OpenRouter 실시간 AI로 평가받고, **[📝 총평 / 💡 개선점 / ✏️ 예시]** 피드백을 통해 1-Click으로 보관함에 바로 등록합니다.
+
+<p align="center">
+  <img src="docs/assets/02_prompt_sandbox.png" alt="AI 프롬프트 검토 샌드박스" width="100%">
+</p>
+
+### 3️⃣ 명령어 보관함 (Command Mode)
+> Docker, Git, Linux, npm, PowerShell 등 개발 CLI 명령어를 터미널 콘솔 UI로 관리하며 위험도와 동작 설명을 한눈에 파악합니다.
+
+<p align="center">
+  <img src="docs/assets/03_command_workspace.png" alt="명령어 보관함 메인 화면" width="100%">
+</p>
+
+### 4️⃣ AI CLI 명령어 추천 & 검증 샌드박스 (Command Sandbox)
+> 필요한 작업을 자연어로 입력하면 최적의 명령어를 추천하고, **[✅ 추천 명령어 / 🔍 동작 설명 / ⚠️ 위험도]**를 정밀 분석해 안전한 실행을 돕습니다.
+
+<p align="center">
+  <img src="docs/assets/04_command_sandbox.png" alt="AI 명령어 추천 샌드박스" width="100%">
+</p>
+
+---
+
+## 🎛️ 듀얼 워크스페이스 핵심 비교
 
 | 구분 | ✨ 프롬프트 보관함 (Prompt Mode) | ⚡ 명령어 보관함 (Command Mode) |
 | :--- | :--- | :--- |
@@ -30,6 +62,7 @@
   - **샌드박스 ➔ 보관함 (1-Click 저장)**: AI 응답에서 핵심 프롬프트/명령어만 정밀 추출하여 상단 등록 폼으로 1초 만에 자동 채워줍니다.
 - **스트리밍 & 스마트 자동 페일오버(Failover)**:
   - Server-Sent Events(SSE) 실시간 스트리밍으로 타이핑 효과 지원
+  - 백엔드 실시간 노이즈 필터링(Zero-Leakage)으로 불필요한 생각 과정 없이 정제된 한국어 3단 응답 제공
   - 1순위 AI 모델 응답 지연/오류 발생 시 2순위, 3순위 무료 모델로 중단 없이 자동 전환
 
 ### 3. ⭐ 즐겨찾기(Pin) & 실시간 검색 / 정렬
@@ -88,6 +121,8 @@ PromptArchive/
 │   ├── models.json              # AI 모델 우선순위 목록 (Failover 체인)
 │   ├── systemPrompt.txt         # 프롬프트 보관함용 AI 평가 프롬프트
 │   └── commandSystemPrompt.txt  # 명령어 보관함용 CLI 검증 프롬프트
+├── docs/
+│   └── assets/                  # README 및 깃허브용 UI 스크린샷 이미지
 ├── logs/
 │   └── eval-usage.log           # AI 호출 및 토큰 사용량 메타데이터 로그 (Git 제외)
 ├── index.html                   # 프론트엔드 UI/UX (TailwindCSS + Vanilla JS)
@@ -119,15 +154,17 @@ OpenRouter의 **무료 모델(`:free`)**은 제공사 사정이나 트래픽 과
 
 ```json
 [
+  "z-ai/glm-5.2:free",
+  "minimax/minimax-m3:free",
+  "nvidia/nemotron-3.5-lightning:free",
   "google/gemma-4-31b-it:free",
-  "google/gemma-4-26b-a4b-it:free",
-  "nvidia/nemotron-3-super-120b-a12b:free"
+  "google/gemma-4-26b-a4b-it:free"
 ]
 ```
 
 ### 2. AI 검토 규칙 수정 (`config/*.txt`)
-- **프롬프트 보관함**: `config/systemPrompt.txt` (Max Tokens: 400)
-- **명령어 보관함**: `config/commandSystemPrompt.txt` (Max Tokens: 480)
+- **프롬프트 보관함**: `config/systemPrompt.txt` (Max Tokens: 800)
+- **명령어 보관함**: `config/commandSystemPrompt.txt` (Max Tokens: 800)
 
 ---
 
@@ -136,4 +173,5 @@ OpenRouter의 **무료 모델(`:free`)**은 제공사 사정이나 트래픽 과
 - **로컬 스토리지 격리**: 사용자가 입력한 모든 프롬프트/명령어는 브라우저 내부 `localStorage`에만 보관되며, 서버나 외부로 전송/저장되지 않습니다.
 - **토큰 로그 익명화**: `logs/eval-usage.log`에는 프롬프트 원문이 일절 기록되지 않고 토큰 수치와 모델 메타데이터만 남습니다.
 - **API 키 보호**: OpenRouter API 키는 서버 환경변수(`.env`)로만 관리되며 클라이언트 코드에 절대 노출되지 않습니다.
+
 

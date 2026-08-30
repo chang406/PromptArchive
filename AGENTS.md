@@ -1,6 +1,6 @@
 # AI 에이전트 공통 페어 프로그래밍 가이드라인 & 규칙 (AGENTS.md)
 
-OpenRouter API 연동 기반 AI 프롬프트 평가 기능을 갖춘 로컬 프롬프트 보관함 웹앱(Express 백엔드 + 정적 `index.html` 프론트엔드)입니다.
+OpenRouter API 연동 기반 AI 프롬프트 및 명령어 평가 기능을 갖춘 로컬 프롬프트 보관함 웹앱(Express 백엔드 + 정적 `index.html` 프론트엔드)입니다.
 
 ---
 
